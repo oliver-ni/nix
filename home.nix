@@ -75,7 +75,11 @@ in
       telescope-nvim
       indent-blankline-nvim
       (lc nvim-tree-lua ''
-        require('nvim-tree').setup()
+        require('nvim-tree').setup {
+          filters = {
+            custom = { '^\\.git' }
+          }
+        }
         local function open_nvim_tree(data)
           if vim.fn.isdirectory(data.file) == 1 then
             vim.cmd.cd(data.file)
