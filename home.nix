@@ -66,6 +66,7 @@ in
       vim.opt.number = true
       vim.opt.smartindent = true
       vim.opt.expandtab = true
+      vim.opt.completeopt = "menu,menuone,noselect"
     '';
 
     plugins = with pkgs.vimPlugins; [
@@ -89,11 +90,66 @@ in
 
       # Code Helpers
       nvim-treesitter
+      ultisnips
+      cmp-git
+      cmp-nvim-lsp
+      (lc nvim-cmp ''
+        local cmp = require('cmp')
+        cmp.setup {
+          snippet = {
+            expand = function(args)
+              vim.fn['UltiSnips#Anon'](args.body)
+            end
+          },
+          mapping = cmp.mapping.preset.insert({
+            ['<C-b>'] = cmp.mapping.scroll_docs(-4),
+            ['<C-f>'] = cmp.mapping.scroll_docs(4),
+            ['<C-Space>'] = cmp.mapping.complete(),
+            ['<C-e>'] = cmp.mapping.abort(),
+            ['<CR>'] = cmp.mapping.confirm({ select = true }),
+          }),
+          sources = cmp.config.sources {
+            { name = 'nvim_lsp' },
+            { name = 'ultisnips' }
+          }, {
+            { name = 'buffer' }
+          }
+        }
+
+        cmp.setup.filetype('gitcommit', {
+          sources = cmp.config.sources({
+            { name = 'git' },
+          }, {
+            { name = 'buffer' },
+          })
+        })
+
+        cmp.setup.cmdline({ '/', '?' }, {
+          mapping = cmp.mapping.preset.cmdline(),
+          sources = {
+            { name = 'buffer' }
+          }
+        })
+
+        cmp.setup.cmdline(':', {
+          mapping = cmp.mapping.preset.cmdline(),
+          sources = cmp.config.sources({
+            { name = 'path' }
+          }, {
+            { name = 'cmdline' }
+          })
+        })
+
+        require('cmp_git').setup()
+      '')
+      (lc gitsigns-nvim "require('gitsigns').setup()")
       (lc guess-indent-nvim "require('guess-indent').setup {}")
       (lc comment-nvim "require('Comment').setup()")
       (lc nvim-lspconfig ''
-        require('lspconfig').rnix.setup {}
-        require('lspconfig').pyright.setup {}
+        local capabilities = require('cmp_nvim_lsp').default_capabilities()
+        require('lspconfig').rnix.setup { capabilities = capabilities }
+        require('lspconfig').pyright.setup { capabilities = capabilities }
+        require('lspconfig').tsserver.setup { capabilities = capabilities }
       '')
 
       # Language Support
@@ -109,6 +165,7 @@ in
       fd
       rnix-lsp
       nodePackages.pyright
+      nodePackages.typescript-language-server
     ];
   };
 }
