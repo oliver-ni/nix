@@ -22,6 +22,22 @@ in
 
     packages = with pkgs; [
       kubectl
+      gh
+      stripe-cli
+      tmux
+      pandoc
+      nodejs-18_x
+      kubectx
+      bat
+      hyperfine
+      imagemagick
+      kubetail
+      kubeseal
+      mongosh
+      pre-commit
+      scc
+      unixtools.watch
+      google-cloud-sdk
     ];
   };
 
@@ -50,6 +66,7 @@ in
       pip = "pip3";
       flushdns = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
       gensec = "openssl rand -base64 8 | md5 | head -c32";
+      vinix = "vim ~/.config/nixpkgs/";
       "$" = "";
     };
   };
