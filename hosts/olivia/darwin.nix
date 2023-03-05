@@ -3,6 +3,7 @@
 {
   imports = [
     ../../modules/darwin/base.nix
+    ../../modules/darwin/docker.nix
     ../../modules/darwin/python.nix
     ../../modules/darwin/redis.nix
   ];
