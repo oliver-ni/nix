@@ -1,7 +1,11 @@
 { config, pkgs, ... }:
 
 {
-  imports = [ ../../modules/darwin/base.nix ];
+  imports = [
+    ../../modules/darwin/base.nix
+    ../../modules/darwin/python.nix
+    ../../modules/darwin/redis.nix
+  ];
 
   users.users.oliver = {
     name = "oliver";

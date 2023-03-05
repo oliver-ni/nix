@@ -1,7 +1,6 @@
 { pkgs, ... }:
-{
-  imports = [ ./python.nix ];
 
+{
   services.nix-daemon.enable = true;
   programs.zsh.enable = true;
   security.pam.enableSudoTouchIdAuth = true;
