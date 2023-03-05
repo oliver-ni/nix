@@ -7,8 +7,9 @@ let
   ];
 in
 {
-  environment.systemPackages = [
-    (pkgs.python311.withPackages python-packages)
+  environment.systemPackages = with pkgs; [
+    (python311.withPackages python-packages)
+    poetry
   ];
 }
 
