@@ -20,7 +20,7 @@ in
       }
       {
         name = "powerlevel10k-config";
-        src = lib.cleanSource ../configs/powerlevel10k;
+        src = lib.cleanSource ../../configs/powerlevel10k;
         file = ".p10k.zsh";
       }
       {
@@ -37,16 +37,17 @@ in
       autoload -U down-line-or-beginning-search
       zle -N up-line-or-beginning-search
       zle -N down-line-or-beginning-search
-      bindkey "''${terminfo[kcuu1]}" up-line-or-beginning-search # Up
-      bindkey "''${terminfo[kcud1]}" down-line-or-beginning-search # Down
+      bindkey "^[[A" up-line-or-beginning-search
+      bindkey "^[[B" down-line-or-beginning-search
+
+      eval "$(/opt/homebrew/bin/brew shellenv)"
     '';
 
     shellAliases = {
       python = "python3";
-      pip = "pip3";
       flushdns = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
       gensec = "openssl rand -base64 8 | md5 | head -c32";
-      vinix = "vim ~/.config/nixpkgs/";
+      dotenv = "set -o allexport; source .env; set +o allexport";
       "$" = "";
     };
   };

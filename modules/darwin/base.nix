@@ -1,0 +1,35 @@
+{ pkgs, ... }:
+{
+  imports = [ ./python.nix ];
+
+  services.nix-daemon.enable = true;
+  programs.zsh.enable = true;
+  security.pam.enableSudoTouchIdAuth = true;
+
+  environment.systemPackages = with pkgs; [
+    bat
+    nixpkgs-fmt
+    tmux
+    wget
+
+    kubectl
+    kubectx
+    kubeseal
+    kubetail
+
+    jdk
+    mongosh
+    nodejs-18_x
+
+    gh
+    google-cloud-sdk
+    stripe-cli
+    s3cmd
+
+    hyperfine
+    imagemagick
+    pandoc
+    pre-commit
+    scc
+  ];
+}
