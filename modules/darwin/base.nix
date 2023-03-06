@@ -16,6 +16,7 @@
     kubeseal
     kubetail
 
+    edgedb
     jdk
     mongosh
     nodejs-18_x
