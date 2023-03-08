@@ -45,7 +45,10 @@ in
       '')
       (lc barbar-nvim "require('bufferline').setup()")
       (lc lualine-nvim "require('lualine').setup()")
-      (lc catppuccin-nvim "vim.cmd('colorscheme catppuccin-latte')")
+      (lc catppuccin-nvim ''
+        require('catppuccin').setup { flavour = 'latte' }
+        vim.cmd.colorscheme('catppuccin')
+      '')
       (lc toggleterm-nvim "require('toggleterm').setup { open_mapping = [[<C-`>]] }")
 
       # Code Helpers
