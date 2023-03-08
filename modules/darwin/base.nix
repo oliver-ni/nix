@@ -16,10 +16,12 @@
     kubeseal
     kubetail
 
-    edgedb
     jdk
-    mongosh
     nodejs-18_x
+    rustup
+
+    edgedb
+    mongosh
 
     gh
     google-cloud-sdk
