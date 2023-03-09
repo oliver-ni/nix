@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ../../modules/home/kitty.nix
     ../../modules/home/neovim.nix
     ../../modules/home/zsh.nix
   ];
