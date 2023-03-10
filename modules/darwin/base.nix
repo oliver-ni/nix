@@ -27,6 +27,7 @@
     google-cloud-sdk
     stripe-cli
     s3cmd
+    teleport
 
     hyperfine
     imagemagick
