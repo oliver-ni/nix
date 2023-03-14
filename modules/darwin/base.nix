@@ -22,6 +22,7 @@
 
     edgedb
     mongosh
+    zola
 
     gh
     google-cloud-sdk
