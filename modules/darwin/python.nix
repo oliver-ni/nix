@@ -4,6 +4,7 @@ let
   python-packages = p: with p; [
     ipython
     black
+    numpy
   ];
 in
 {
