@@ -5,6 +5,7 @@ let
     ipython
     black
     numpy
+    jq
   ];
 in
 {
