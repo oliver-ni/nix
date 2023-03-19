@@ -15,6 +15,7 @@
     kubectx
     kubeseal
     kubetail
+    kubernetes-helm
 
     jdk
     nodejs-18_x
