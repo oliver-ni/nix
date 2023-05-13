@@ -31,6 +31,8 @@ in
     ];
 
     initExtra = ''
+      export PATH="$PATH:$HOME/.krew/bin"
+
       bindkey "^U" backward-kill-line
 
       autoload -U up-line-or-beginning-search
@@ -39,6 +41,8 @@ in
       zle -N down-line-or-beginning-search
       bindkey "^[[A" up-line-or-beginning-search
       bindkey "^[[B" down-line-or-beginning-search
+
+      [ "$TERM" = "xterm-kitty" ] && alias ssh="kitty +kitten ssh"
     '';
 
     shellAliases = {

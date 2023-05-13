@@ -1,6 +1,10 @@
-{ config, ... }:
+{ config, pkgs, ... }:
 
 {
+  home.packages = with pkgs; [
+    fzf
+  ];
+
   programs.kitty = {
     enable = true;
 
@@ -15,7 +19,7 @@
       tab_title_template          {(p := tab.active_oldest_wd.replace("${config.home.homeDirectory}", "~").split("/")) and "/".join([x[:1] for x in p[:-2]] + p[-2:])} • {tab.active_exe}{f" [{num_windows}]" if num_windows > 1 else ""}
     '';
 
-    font.name = "Iosevka Term";
+    font.name = "PragmataPro Liga";
     font.size = 17;
     theme = "Catppuccin-Latte";
 
@@ -36,6 +40,7 @@
       "opt+left" = "send_text all \\x1b\\x62";
       "opt+right" = "send_text all \\x1b\\x66";
 
+      "cmd+f" = "launch --type=overlay --stdin-source=@screen_scrollback fzf --no-sort --no-mouse --exact -i";
       "cmd+z" = "send_text all \\x1f";
     };
   };

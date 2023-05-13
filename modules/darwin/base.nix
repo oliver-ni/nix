@@ -10,16 +10,24 @@
     nixpkgs-fmt
     tmux
     wget
+    postgresql
 
     kubectl
     kubectx
     kubeseal
     kubetail
     kubernetes-helm
+    krew
 
     jdk
     nodejs-18_x
+    nodePackages.pnpm
+    vsce
     rustup
+
+    elixir_1_14
+    elixir-ls
+    erlangR25
 
     edgedb
     mongosh
