@@ -32,6 +32,7 @@ in
 
     initExtra = ''
       export PATH="$PATH:$HOME/.krew/bin"
+      export PATH="$PATH:$HOME/.local/bin"
 
       bindkey "^U" backward-kill-line
 

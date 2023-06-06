@@ -10,7 +10,6 @@
     nixpkgs-fmt
     tmux
     wget
-    postgresql
 
     kubectl
     kubectx
@@ -19,7 +18,7 @@
     kubernetes-helm
     krew
 
-    jdk
+    jdk17
     nodejs-18_x
     nodePackages.pnpm
     vsce
