@@ -15,5 +15,12 @@
         ./hosts/olivia/darwin.nix
       ];
     };
+    darwinConfigurations.orange = darwin.lib.darwinSystem {
+      system = "aarch64-darwin";
+      modules = [
+        home-manager.darwinModules.home-manager
+        ./hosts/orange/darwin.nix
+      ];
+    };
   };
 }
