@@ -44,6 +44,7 @@ in
       bindkey "^[[B" down-line-or-beginning-search
 
       [ "$TERM" = "xterm-kitty" ] && alias ssh="kitty +kitten ssh"
+      eval "$(/opt/homebrew/bin/brew shellenv)"
     '';
 
     shellAliases = {

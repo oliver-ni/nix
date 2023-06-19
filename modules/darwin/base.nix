@@ -4,6 +4,9 @@
   services.nix-daemon.enable = true;
   programs.zsh.enable = true;
   security.pam.enableSudoTouchIdAuth = true;
+  nix.settings = {
+    experimental-features = "nix-command flakes";
+  };
 
   environment.systemPackages = with pkgs; [
     bat
@@ -43,5 +46,12 @@
     pandoc
     pre-commit
     scc
+
+    git
+    git-lfs
+
+    ccache
+    cmake
+    clang-tools
   ];
 }
