@@ -12,6 +12,10 @@ in
   programs.zsh = {
     enable = true;
 
+    sessionVariables = {
+      EDITOR = "vim";
+    };
+
     plugins = [
       {
         name = "powerlevel10k";
