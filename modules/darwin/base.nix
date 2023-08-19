@@ -53,5 +53,7 @@
     ccache
     cmake
     clang-tools
+
+    typst
   ];
 }
