@@ -6,7 +6,7 @@ let
     black
     numpy
     jq
-    jupyter
+    # jupyter
   ];
 in
 {
