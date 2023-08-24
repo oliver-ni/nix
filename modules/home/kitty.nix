@@ -40,7 +40,7 @@
       "opt+left" = "send_text all \\x1b\\x62";
       "opt+right" = "send_text all \\x1b\\x66";
 
-      "cmd+f" = "launch --type=overlay --stdin-source=@screen_scrollback fzf --no-sort --no-mouse --exact -i";
+      "cmd+f" = "launch --type=overlay --stdin-source=@screen_scrollback fzf --no-sort -i";
       "cmd+z" = "send_text all \\x1f";
     };
   };
