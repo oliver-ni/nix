@@ -1,6 +1,7 @@
 { pkgs, ... }:
 
 {
+  nixpkgs.config.allowUnfree = true;
   services.nix-daemon.enable = true;
   programs.zsh.enable = true;
   security.pam.enableSudoTouchIdAuth = true;
@@ -55,5 +56,6 @@
     clang-tools
 
     typst
+    _1password
   ];
 }
