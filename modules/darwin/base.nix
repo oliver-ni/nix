@@ -1,11 +1,17 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 
 {
-  nix.settings = {
-    experimental-features = "nix-command flakes";
-    substituters = [ "https://nixpkgs-python.cachix.org" ];
-    trusted-substituters = [ "https://nixpkgs-python.cachix.org" ];
-    trusted-public-keys = [ "nixpkgs-python.cachix.org-1:hxjI7pFxTyuTHn2NkvWCrAUcNZLNS3ZAvfYNuYifcEU=" ];
+  nix = {
+    registry = {
+      nixpkgs.flake = inputs.nixpkgs;
+      nixpkgs-python.flake = inputs.nixpkgs-python;
+    };
+    settings = {
+      experimental-features = "nix-command flakes";
+      substituters = [ "https://nixpkgs-python.cachix.org" ];
+      trusted-substituters = [ "https://nixpkgs-python.cachix.org" ];
+      trusted-public-keys = [ "nixpkgs-python.cachix.org-1:hxjI7pFxTyuTHn2NkvWCrAUcNZLNS3ZAvfYNuYifcEU=" ];
+    };
   };
 
   services.nix-daemon.enable = true;

@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs-python.url = "github:cachix/nixpkgs-python";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -11,7 +12,7 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, darwin }:
+  outputs = inputs@{ self, nixpkgs, home-manager, darwin, ... }:
     let
       system = "aarch64-darwin";
       pkgs = import nixpkgs {
@@ -26,6 +27,7 @@
           home-manager.darwinModules.home-manager
           ./hosts/olivia/darwin.nix
         ];
+        specialArgs = { inherit inputs; };
       };
       darwinConfigurations.orange = darwin.lib.darwinSystem {
         inherit pkgs system;
@@ -33,6 +35,7 @@
           home-manager.darwinModules.home-manager
           ./hosts/orange/darwin.nix
         ];
+        specialArgs = { inherit inputs; };
       };
     };
 }
