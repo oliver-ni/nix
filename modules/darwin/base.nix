@@ -1,13 +1,16 @@
 { pkgs, ... }:
 
 {
-  nixpkgs.config.allowUnfree = true;
+  nix.settings = {
+    experimental-features = "nix-command flakes";
+    substituters = [ "https://nixpkgs-python.cachix.org" ];
+    trusted-substituters = [ "https://nixpkgs-python.cachix.org" ];
+    trusted-public-keys = [ "nixpkgs-python.cachix.org-1:hxjI7pFxTyuTHn2NkvWCrAUcNZLNS3ZAvfYNuYifcEU=" ];
+  };
+
   services.nix-daemon.enable = true;
   programs.zsh.enable = true;
   security.pam.enableSudoTouchIdAuth = true;
-  nix.settings = {
-    experimental-features = "nix-command flakes";
-  };
 
   environment.systemPackages = with pkgs; [
     bat
@@ -57,5 +60,6 @@
 
     typst
     _1password
+    cachix
   ];
 }
