@@ -46,9 +46,10 @@
       homeModules = fs.toList (fs.intersection allNixFiles ./modules/home);
 
       nixosSystem = modules: nixpkgs.lib.nixosSystem {
-        inherit pkgs inputs;
+        inherit pkgs;
         system = "x86_64-linux";
         modules = commonModules ++ nixosModules ++ modules;
+        specialArgs = { inherit inputs; };
       };
 
       darwinSystem = modules: nix-darwin.lib.darwinSystem {
