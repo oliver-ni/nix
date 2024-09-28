@@ -1,72 +1,43 @@
-{ pkgs, inputs, ... }:
+{ pkgs, lib, inputs, ... }:
 
 {
   nix = {
-    registry = {
-      nixpkgs.flake = inputs.nixpkgs;
-      nixpkgs-python.flake = inputs.nixpkgs-python;
-    };
+    package = pkgs.lix;
+    channel.enable = false;
+    registry = lib.mapAttrs (_: value: { flake = value; }) inputs;
     settings = {
       experimental-features = "nix-command flakes";
-      substituters = [ "https://nixpkgs-python.cachix.org" ];
-      trusted-substituters = [ "https://nixpkgs-python.cachix.org" ];
-      trusted-public-keys = [ "nixpkgs-python.cachix.org-1:hxjI7pFxTyuTHn2NkvWCrAUcNZLNS3ZAvfYNuYifcEU=" ];
+      nix-path = lib.mapAttrsToList (name: _: "${name}=flake:${name}") inputs;
     };
   };
 
+  services.tailscale.enable = true;
   services.nix-daemon.enable = true;
-  services.activate-system.enable = true;
-  programs.zsh.enable = true;
   security.pam.enableSudoTouchIdAuth = true;
 
-  environment.systemPackages = with pkgs; [
-    bat
-    nixpkgs-fmt
-    tmux
-    wget
+  programs.zsh.enable = true;
 
+  fonts.packages = with pkgs; [ raleway ];
+
+  environment.systemPackages = with pkgs; [
+    fzf
     kubectl
     kubectx
-    kubeseal
-    kubetail
-    kubernetes-helm
-    krew
+    git-branchless
 
-    jdk17
-    nodejs-18_x
-    nodePackages.pnpm
-    vsce
-    rustup
+    utm
+    qemu
+    nixd
 
-    elixir_1_14
-    elixir-ls
-    erlangR25
+    comma-with-db
 
-    edgedb
-    mongosh
-    zola
-
-    gh
-    google-cloud-sdk
-    stripe-cli
-    s3cmd
-    teleport
-
-    hyperfine
-    imagemagick
-    pandoc
-    pre-commit
-    scc
-
-    git
-    git-lfs
-
-    ccache
-    cmake
-    clang-tools
-
-    typst
-    _1password
-    cachix
+    # GUI Apps
+    arc-browser
+    raycast
+    brewCasks.discord
+    brewCasks.signal
+    brewCasks.zed
+    brewCasks.cleanshot
+    brewCasks."affinity-designer@1"
   ];
 }

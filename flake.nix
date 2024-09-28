@@ -1,41 +1,62 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    nixpkgs-python.url = "github:cachix/nixpkgs-python";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=28d1022cd5b977b02ba1419c464a418ee166dfa4";
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    nix-darwin = {
+      url = "github:lnl7/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    darwin = {
-      url = "github:lnl7/nix-darwin";
+    brew-api = {
+      url = "github:BatteredBunny/brew-api";
+      flake = false;
+    };
+    brew-nix = {
+      url = "github:BatteredBunny/brew-nix";
+      inputs.nix-darwin.follows = "nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.brew-api.follows = "brew-api";
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, darwin, ... }:
+  outputs = inputs@{ nixpkgs, nix-index-database, nix-darwin, home-manager, brew-nix, ... }:
     let
       system = "aarch64-darwin";
+      fs = nixpkgs.lib.fileset;
+      allNixFiles = fs.fileFilter (file: file.hasExt "nix") ./.;
+
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
+        overlays = [
+          brew-nix.overlays.default
+          nix-index-database.overlays.nix-index
+        ];
+      };
+
+      darwinModules = fs.toList (fs.intersection allNixFiles ./modules/darwin);
+      homeModules = fs.toList (fs.intersection allNixFiles ./modules/home);
+
+      darwinSystem = modules: nix-darwin.lib.darwinSystem {
+        inherit pkgs inputs;
+        system = "aarch64-darwin";
+        modules = darwinModules ++ modules;
+      };
+
+      homeManagerConfiguration = modules: home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = homeModules ++ modules;
       };
     in
     {
-      darwinConfigurations.olivia = darwin.lib.darwinSystem {
-        inherit pkgs system;
-        modules = [
-          home-manager.darwinModules.home-manager
-          ./hosts/olivia/darwin.nix
-        ];
-        specialArgs = { inherit inputs; };
-      };
-      darwinConfigurations.orange = darwin.lib.darwinSystem {
-        inherit pkgs system;
-        modules = [
-          home-manager.darwinModules.home-manager
-          ./hosts/orange/darwin.nix
-        ];
-        specialArgs = { inherit inputs; };
-      };
+      formatter.${system} = pkgs.nixpkgs-fmt;
+      darwinConfigurations.onigiri = darwinSystem [ ./darwin/onigiri.nix ];
+      homeConfigurations."oliver@onigiri" = homeManagerConfiguration [ ./home/${"oliver@onigiri"}.nix ];
     };
 }

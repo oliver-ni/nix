@@ -14,28 +14,18 @@ in
 
     sessionVariables = {
       EDITOR = "vim";
+      VISUAL = "vim";
     };
 
     plugins = [
-      {
-        name = "powerlevel10k";
-        src = pkgs.zsh-powerlevel10k;
-        file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
-      }
-      {
-        name = "powerlevel10k-config";
-        src = lib.cleanSource ./.;
-        file = ".p10k.zsh";
-      }
-      {
-        name = "kubectl-aliases";
-        src = kubectl-aliases;
-        file = ".kubectl_aliases";
-      }
+      { name = "powerlevel10k"; src = pkgs.zsh-powerlevel10k; file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme"; }
+      { name = "powerlevel10k-config"; src = lib.cleanSource ./zsh; file = "p10k.zsh"; }
+      { name = "gcl"; src = lib.cleanSource ./zsh; file = "gcl.zsh"; }
+      { name = "tmp"; src = lib.cleanSource ./zsh; file = "tmp.zsh"; }
+      { name = "kubectl-aliases"; src = kubectl-aliases; file = ".kubectl_aliases"; }
     ];
 
     initExtra = ''
-      export PATH="$PATH:$HOME/.krew/bin"
       export PATH="$PATH:$HOME/.local/bin"
 
       bindkey "^U" backward-kill-line
@@ -48,7 +38,7 @@ in
       bindkey "^[[B" down-line-or-beginning-search
 
       [ "$TERM" = "xterm-kitty" ] && alias ssh="kitty +kitten ssh"
-      eval "$(/opt/homebrew/bin/brew shellenv)"
+      # eval "$(/opt/homebrew/bin/brew shellenv)"
     '';
 
     shellAliases = {
