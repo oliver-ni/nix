@@ -40,13 +40,21 @@
         ];
       };
 
+      commonModules = fs.toList (fs.intersection allNixFiles ./modules/common);
+      nixosModules = fs.toList (fs.intersection allNixFiles ./modules/nixos);
       darwinModules = fs.toList (fs.intersection allNixFiles ./modules/darwin);
       homeModules = fs.toList (fs.intersection allNixFiles ./modules/home);
+
+      nixosSystem = modules: nixpkgs.lib.nixosSystem {
+        inherit pkgs inputs;
+        system = "x86_64-linux";
+        modules = commonModules ++ nixosModules ++ modules;
+      };
 
       darwinSystem = modules: nix-darwin.lib.darwinSystem {
         inherit pkgs inputs;
         system = "aarch64-darwin";
-        modules = darwinModules ++ modules;
+        modules = commonModules ++ darwinModules ++ modules;
       };
 
       homeManagerConfiguration = modules: home-manager.lib.homeManagerConfiguration {
@@ -56,7 +64,17 @@
     in
     {
       formatter.${system} = pkgs.nixpkgs-fmt;
-      darwinConfigurations.onigiri = darwinSystem [ ./darwin/onigiri.nix ];
-      homeConfigurations."oliver@onigiri" = homeManagerConfiguration [ ./home/${"oliver@onigiri"}.nix ];
+
+      nixosConfigurations = {
+        wasabi = nixosSystem [ ./hosts/wasabi.nix ];
+      };
+
+      darwinConfigurations = {
+        onigiri = darwinSystem [ ./hosts/onigiri.nix ];
+      };
+
+      homeConfigurations = {
+        "oliver@onigiri" = homeManagerConfiguration [ ./home/${"oliver@onigiri"}.nix ];
+      };
     };
 }
