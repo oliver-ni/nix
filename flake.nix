@@ -27,11 +27,10 @@
 
   outputs = inputs@{ nixpkgs, nix-index-database, nix-darwin, home-manager, brew-nix, ... }:
     let
-      system = "aarch64-darwin";
       fs = nixpkgs.lib.fileset;
       allNixFiles = fs.fileFilter (file: file.hasExt "nix") ./.;
 
-      pkgs = import nixpkgs {
+      pkgsFor = system: import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         overlays = [
@@ -45,26 +44,29 @@
       darwinModules = fs.toList (fs.intersection allNixFiles ./modules/darwin);
       homeModules = fs.toList (fs.intersection allNixFiles ./modules/home);
 
-      nixosSystem = modules: nixpkgs.lib.nixosSystem {
-        inherit pkgs;
+      nixosSystem = modules_: nixpkgs.lib.nixosSystem rec {
         system = "x86_64-linux";
-        modules = commonModules ++ nixosModules ++ modules;
+        pkgs = pkgsFor system;
+        modules = commonModules ++ nixosModules ++ modules_;
         specialArgs = { inherit inputs; };
       };
 
-      darwinSystem = modules: nix-darwin.lib.darwinSystem {
-        inherit pkgs inputs;
+      darwinSystem = modules_: nix-darwin.lib.darwinSystem rec {
+        inherit inputs;
         system = "aarch64-darwin";
-        modules = commonModules ++ darwinModules ++ modules;
+        pkgs = pkgsFor system;
+        modules = commonModules ++ darwinModules ++ modules_;
       };
 
-      homeManagerConfiguration = modules: home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        modules = homeModules ++ modules;
+      homeManagerConfiguration = system: modules_: home-manager.lib.homeManagerConfiguration rec {
+        pkgs = pkgsFor system;
+        modules = homeModules ++ modules_;
       };
+
+      forAllSystems = fn: nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-darwin" ] (system: fn (pkgsFor system));
     in
     {
-      formatter.${system} = pkgs.nixpkgs-fmt;
+      formatter = forAllSystems (pkgs: pkgs.nixpkgs-fmt);
 
       nixosConfigurations = {
         wasabi = nixosSystem [ ./hosts/wasabi.nix ];
@@ -75,7 +77,7 @@
       };
 
       homeConfigurations = {
-        "oliver@onigiri" = homeManagerConfiguration [ ./home/${"oliver@onigiri"}.nix ];
+        "oliver@onigiri" = homeManagerConfiguration "aarch64-darwin" [ ./home/${"oliver@onigiri"}.nix ];
       };
     };
 }
