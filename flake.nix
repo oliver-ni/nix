@@ -60,7 +60,7 @@
 
       darwinConfigurations = {
         onigiri = darwinSystem [ ./hosts/onigiri.nix ];
-        temupra = darwinSystem [ ./hosts/tempura.nix ];
+        tempura = darwinSystem [ ./hosts/tempura.nix ];
       };
 
       homeConfigurations = {
