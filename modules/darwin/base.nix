@@ -26,7 +26,7 @@
     jujutsu
 
     rustup
-    _1password
+    _1password-cli
 
     comma-with-db
   ];
