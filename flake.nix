@@ -15,7 +15,7 @@
     };
   };
 
-  outputs = inputs@{ nixpkgs, nix-index-database, nix-darwin, home-manager, brew-nix, ... }:
+  outputs = inputs@{ nixpkgs, nix-index-database, nix-darwin, home-manager, ... }:
     let
       fs = nixpkgs.lib.fileset;
       allNixFiles = fs.fileFilter (file: file.hasExt "nix") ./.;
@@ -24,15 +24,14 @@
         inherit system;
         config.allowUnfree = true;
         overlays = [
-          brew-nix.overlays.default
           nix-index-database.overlays.nix-index
         ];
       };
 
-      commonModules = fs.toList (fs.intersection allNixFiles ./modules/common);
-      nixosModules = fs.toList (fs.intersection allNixFiles ./modules/nixos);
-      darwinModules = fs.toList (fs.intersection allNixFiles ./modules/darwin);
-      homeModules = fs.toList (fs.intersection allNixFiles ./modules/home);
+      commonModules = fs.toList (fs.intersection allNixFiles (fs.maybeMissing ./modules/common));
+      nixosModules = fs.toList (fs.intersection allNixFiles (fs.maybeMissing ./modules/nixos));
+      darwinModules = fs.toList (fs.intersection allNixFiles (fs.maybeMissing ./modules/darwin));
+      homeModules = fs.toList (fs.intersection allNixFiles (fs.maybeMissing ./modules/home));
 
       nixosSystem = modules_: nixpkgs.lib.nixosSystem rec {
         system = "x86_64-linux";
