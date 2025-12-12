@@ -17,6 +17,18 @@
     direnv.enable = true;
   };
 
+  homebrew = {
+    enable = true;
+    casks = [
+      "1password"
+      "discord"
+      "ghostty"
+      "raycast"
+      "zed"
+      "zen"
+    ];
+  };
+
   environment.systemPackages = with pkgs; [
     fzf
     kubectl

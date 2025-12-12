@@ -64,7 +64,7 @@
 
       homeConfigurations = {
         "oliver@onigiri" = homeManagerConfiguration "aarch64-darwin" [ ./home/${"oliver@onigiri"}.nix ];
-        "oliver@temupra" = homeManagerConfiguration "aarch64-darwin" [ ./home/${"oliver@tempura"}.nix ];
+        "oliver@tempura" = homeManagerConfiguration "aarch64-darwin" [ ./home/${"oliver@tempura"}.nix ];
       };
     };
 }
