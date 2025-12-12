@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=28d1022cd5b977b02ba1419c464a418ee166dfa4";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-unstable";
     nix-index-database = {
       url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -68,16 +68,14 @@
     {
       formatter = forAllSystems (pkgs: pkgs.nixpkgs-fmt);
 
-      nixosConfigurations = {
-        wasabi = nixosSystem [ ./hosts/wasabi.nix ];
-      };
-
       darwinConfigurations = {
         onigiri = darwinSystem [ ./hosts/onigiri.nix ];
+        temupra = darwinSystem [ ./hosts/tempura.nix ];
       };
 
       homeConfigurations = {
         "oliver@onigiri" = homeManagerConfiguration "aarch64-darwin" [ ./home/${"oliver@onigiri"}.nix ];
+        "oliver@temupra" = homeManagerConfiguration "aarch64-darwin" [ ./home/${"oliver@tempura"}.nix ];
       };
     };
 }

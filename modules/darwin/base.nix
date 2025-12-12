@@ -1,22 +1,33 @@
-{ pkgs, ... }:
+{ pkgs, lib, inputs, ... }:
 
 {
-  services.nix-daemon.enable = true;
-  security.pam.enableSudoTouchIdAuth = true;
+  nix = {
+    package = pkgs.lix;
+    channel.enable = false;
+    registry = lib.mapAttrs (_: value: { flake = value; }) inputs;
+    settings = {
+      experimental-features = [ "nix-command" "flakes" ];
+      nix-path = lib.mapAttrsToList (name: _: "${name}=flake:${name}") inputs;
+    };
+  };
 
-  fonts.packages = with pkgs; [ raleway ];
+  security.pam.services.sudo_local.touchIdAuth = true;
+
+  programs = {
+    direnv.enable = true;
+  };
 
   environment.systemPackages = with pkgs; [
-    utm
-    qemu
+    fzf
+    kubectl
+    kubectx
+    git-branchless
+    gh
+    jujutsu
 
-    # GUI Apps
-    arc-browser
-    raycast
-    brewCasks.discord
-    brewCasks.signal
-    brewCasks.zed
-    brewCasks.cleanshot
-    brewCasks."affinity-designer@1"
+    rustup
+    _1password
+
+    comma-with-db
   ];
 }

@@ -27,6 +27,8 @@ in
 
     initExtra = ''
       export PATH="$PATH:$HOME/.local/bin"
+      export PATH="$PATH:$HOME/.cargo/bin"
+      export PATH="''${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
       bindkey "^U" backward-kill-line
 
@@ -38,10 +40,11 @@ in
       bindkey "^[[B" down-line-or-beginning-search
 
       [ "$TERM" = "xterm-kitty" ] && alias ssh="kitty +kitten ssh"
-      # eval "$(/opt/homebrew/bin/brew shellenv)"
+      eval "$(/opt/homebrew/bin/brew shellenv)"
     '';
 
     shellAliases = {
+      j = "jj";
       python = "python3";
       flushdns = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
       gensec = "openssl rand -base64 8 | md5 | head -c32";
