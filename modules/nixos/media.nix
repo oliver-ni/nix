@@ -3,11 +3,35 @@
 let
   mediaDir = "/zfs78/media";
   group = "media";
-  arrs = [
-    "sonarr"
-    "radarr"
-    "prowlarr"
-  ];
+
+  # The *arr services take their API key via an environment variable, but the
+  # age secret holds only the bare key so Recyclarr can read it too. A oneshot
+  # ordered before each service writes the env file; systemd reads
+  # EnvironmentFile before ExecStartPre, so preStart is too late.
+  arrApiKeyUnits = name: {
+    ${name}.serviceConfig = {
+      EnvironmentFile = "/run/${name}/env";
+      UMask = "0002";
+    };
+
+    "${name}-env" = {
+      before = [ "${name}.service" ];
+      requiredBy = [ "${name}.service" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RuntimeDirectory = name;
+        RuntimeDirectoryPreserve = true;
+      };
+
+      script = ''
+        umask 077
+        printf '${lib.toUpper name}__AUTH__APIKEY=%s\n' "$(cat ${
+          config.age.secrets."${name}-api-key".path
+        })" > /run/${name}/env
+      '';
+    };
+  };
 in
 {
   users = {
@@ -15,9 +39,11 @@ in
     users.oliver.extraGroups = [ group ];
   };
 
-  age.secrets = lib.genAttrs (map (n: "${n}-api-key") arrs) (name: {
-    file = ../../secrets/${name}.age;
-  });
+  age.secrets = {
+    sonarr-api-key.file = ../../secrets/sonarr-api-key.age;
+    radarr-api-key.file = ../../secrets/radarr-api-key.age;
+    prowlarr-api-key.file = ../../secrets/prowlarr-api-key.age;
+  };
 
   # NVENC transcoding on the GTX 1060. Pascal support ended with the 580
   # branch, so pin it to avoid a future flake update silently pulling 590.
@@ -36,21 +62,21 @@ in
     xserver.videoDrivers = [ "nvidia" ];
 
     jellyfin = {
-      enable = true;
       inherit group;
+      enable = true;
       openFirewall = true;
     };
 
     sonarr = {
-      enable = true;
       inherit group;
+      enable = true;
       openFirewall = true;
       settings.auth.method = "External";
     };
 
     radarr = {
-      enable = true;
       inherit group;
+      enable = true;
       openFirewall = true;
       settings.auth.method = "External";
     };
@@ -62,8 +88,8 @@ in
     };
 
     qbittorrent = {
-      enable = true;
       inherit group;
+      enable = true;
       openFirewall = true;
       webuiPort = 8080;
 
@@ -121,38 +147,8 @@ in
       jellyfin.serviceConfig.UMask = lib.mkForce "0002";
       qbittorrent.serviceConfig.UMask = "0002";
     }
-    # The *arr services take their API key via an environment variable, but
-    # the age secret holds only the bare key so Recyclarr can read it too. A
-    # oneshot ordered before each service writes the env file; systemd reads
-    # EnvironmentFile before ExecStartPre, so preStart is too late.
-    // lib.genAttrs arrs (name: {
-      serviceConfig = {
-        EnvironmentFile = "/run/${name}/env";
-        UMask = "0002";
-      };
-    })
-    // lib.genAttrs (map (n: "${n}-env") arrs) (
-      unit:
-      let
-        name = lib.removeSuffix "-env" unit;
-      in
-      {
-        before = [ "${name}.service" ];
-        requiredBy = [ "${name}.service" ];
-
-        serviceConfig = {
-          Type = "oneshot";
-          RuntimeDirectory = name;
-          RuntimeDirectoryPreserve = true;
-        };
-
-        script = ''
-          umask 077
-          printf '${lib.toUpper name}__AUTH__APIKEY=%s\n' "$(cat ${
-            config.age.secrets."${name}-api-key".path
-          })" > /run/${name}/env
-        '';
-      }
-    );
+    // arrApiKeyUnits "sonarr"
+    // arrApiKeyUnits "radarr"
+    // arrApiKeyUnits "prowlarr";
   };
 }
