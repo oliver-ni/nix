@@ -33,53 +33,56 @@ in
       { name = "jj-aliases"; src = jj-aliases; file = ".jj_aliases"; }
     ];
 
-    initExtraFirst = ''
-      # >>>> BEGIN MANAGED DEVIN BLOCK >>>>
-      # Add ~/.local/bin to PATH for devin
-      if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-        export PATH="$HOME/.local/bin:$PATH"
-      fi
-      if [ -x "/Users/oliver/.local/bin/devin" ]; then
-        eval "$("/Users/oliver/.local/bin/devin" shell init zsh --stage pre)"
-      fi
-      # <<<< END MANAGED DEVIN BLOCK <<<<
+    initContent = lib.mkMerge [
+      (lib.mkBefore ''
+        # p10k instant prompt — must be before anything that produces output
+        if [[ -r "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh" ]]; then
+          source "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh"
+        fi
 
-      # p10k instant prompt — must be before anything that produces output
-      if [[ -r "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh" ]]; then
-        source "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh"
-      fi
-    '';
+        # >>>> BEGIN MANAGED DEVIN BLOCK >>>>
+        # Add ~/.local/bin to PATH for devin
+        typeset -U path
+        path=("''${KREW_ROOT:-$HOME/.krew}/bin" "$HOME/.local/bin" "''${path[@]}" "$HOME/.cargo/bin")
+        if [ -x "$HOME/.local/bin/devin" ]; then
+          eval "$("$HOME/.local/bin/devin" shell init zsh --stage pre)"
+        fi
+        # <<<< END MANAGED DEVIN BLOCK <<<<
+      '')
+      ''
+        bindkey "^U" backward-kill-line
 
-    initExtra = ''
-      export PATH="$PATH:$HOME/.local/bin"
-      export PATH="$PATH:$HOME/.cargo/bin"
-      export PATH="''${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+        autoload -U up-line-or-beginning-search
+        autoload -U down-line-or-beginning-search
+        zle -N up-line-or-beginning-search
+        zle -N down-line-or-beginning-search
+        bindkey "^[[A" up-line-or-beginning-search
+        bindkey "^[[B" down-line-or-beginning-search
 
-      bindkey "^U" backward-kill-line
+        if [[ "$TERM" = "xterm-kitty" ]] && (( $+commands[kitty] )); then
+          alias ssh="kitty +kitten ssh"
+        fi
+        ${lib.optionalString pkgs.stdenv.isDarwin ''
+          if [[ -x /opt/homebrew/bin/brew ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+          fi
+        ''}
 
-      autoload -U up-line-or-beginning-search
-      autoload -U down-line-or-beginning-search
-      zle -N up-line-or-beginning-search
-      zle -N down-line-or-beginning-search
-      bindkey "^[[A" up-line-or-beginning-search
-      bindkey "^[[B" down-line-or-beginning-search
-
-      [ "$TERM" = "xterm-kitty" ] && alias ssh="kitty +kitten ssh"
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-
-      # >>>> BEGIN MANAGED DEVIN BLOCK >>>>
-      if [ -x "/Users/oliver/.local/bin/devin" ]; then
-        eval "$("/Users/oliver/.local/bin/devin" shell init zsh --stage post)"
-      fi
-      # <<<< END MANAGED DEVIN BLOCK <<<<
-    '';
+        # >>>> BEGIN MANAGED DEVIN BLOCK >>>>
+        if [ -x "$HOME/.local/bin/devin" ]; then
+          eval "$("$HOME/.local/bin/devin" shell init zsh --stage post)"
+        fi
+        # <<<< END MANAGED DEVIN BLOCK <<<<
+      ''
+    ];
 
     shellAliases = {
       python = "python3";
-      flushdns = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
-      gensec = "openssl rand -base64 8 | md5 | head -c32";
+      gensec = "${lib.getExe pkgs.openssl} rand -hex 16";
       dotenv = "set -o allexport; source .env; set +o allexport";
       "$" = "";
+    } // lib.optionalAttrs pkgs.stdenv.isDarwin {
+      flushdns = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
     };
   };
 }

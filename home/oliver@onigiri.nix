@@ -1,6 +1,13 @@
 { ... }:
 
 {
+  imports = [
+    ../modules/home/cli.nix
+    ../modules/home/ghostty.nix
+    ../modules/home/kitty.nix
+    ../modules/home/zsh.nix
+  ];
+
   home.username = "oliver";
   home.homeDirectory = "/Users/oliver";
 

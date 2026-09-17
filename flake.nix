@@ -17,9 +17,6 @@
 
   outputs = inputs@{ nixpkgs, nix-index-database, nix-darwin, home-manager, ... }:
     let
-      fs = nixpkgs.lib.fileset;
-      allNixFiles = fs.fileFilter (file: file.hasExt "nix") ./.;
-
       pkgsFor = system: import nixpkgs {
         inherit system;
         config.allowUnfree = true;
@@ -28,28 +25,16 @@
         ];
       };
 
-      commonModules = fs.toList (fs.intersection allNixFiles (fs.maybeMissing ./modules/common));
-      nixosModules = fs.toList (fs.intersection allNixFiles (fs.maybeMissing ./modules/nixos));
-      darwinModules = fs.toList (fs.intersection allNixFiles (fs.maybeMissing ./modules/darwin));
-      homeModules = fs.toList (fs.intersection allNixFiles (fs.maybeMissing ./modules/home));
-
-      nixosSystem = modules_: nixpkgs.lib.nixosSystem rec {
-        system = "x86_64-linux";
-        pkgs = pkgsFor system;
-        modules = commonModules ++ nixosModules ++ modules_;
-        specialArgs = { inherit inputs; };
-      };
-
-      darwinSystem = modules_: nix-darwin.lib.darwinSystem rec {
+      darwinSystem = host: nix-darwin.lib.darwinSystem rec {
         inherit inputs;
         system = "aarch64-darwin";
         pkgs = pkgsFor system;
-        modules = commonModules ++ darwinModules ++ modules_;
+        modules = [ ./modules/darwin/base.nix host ];
       };
 
-      homeManagerConfiguration = system: modules_: home-manager.lib.homeManagerConfiguration rec {
+      homeManagerConfiguration = system: home: home-manager.lib.homeManagerConfiguration {
         pkgs = pkgsFor system;
-        modules = homeModules ++ modules_;
+        modules = [ ./modules/home/base.nix home ];
       };
 
       forAllSystems = fn: nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-darwin" ] (system: fn (pkgsFor system));
@@ -58,13 +43,13 @@
       formatter = forAllSystems (pkgs: pkgs.nixpkgs-fmt);
 
       darwinConfigurations = {
-        onigiri = darwinSystem [ ./hosts/onigiri.nix ];
-        tempura = darwinSystem [ ./hosts/tempura.nix ];
+        onigiri = darwinSystem ./hosts/darwin/onigiri.nix;
+        tempura = darwinSystem ./hosts/darwin/tempura.nix;
       };
 
       homeConfigurations = {
-        "oliver@onigiri" = homeManagerConfiguration "aarch64-darwin" [ ./home/${"oliver@onigiri"}.nix ];
-        "oliver@tempura" = homeManagerConfiguration "aarch64-darwin" [ ./home/${"oliver@tempura"}.nix ];
+        "oliver@onigiri" = homeManagerConfiguration "aarch64-darwin" ./home/${"oliver@onigiri"}.nix;
+        "oliver@tempura" = homeManagerConfiguration "aarch64-darwin" ./home/${"oliver@tempura"}.nix;
       };
     };
 }

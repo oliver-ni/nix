@@ -17,7 +17,7 @@
 
     font.name = "PragmataPro Mono Liga";
     font.size = 17;
-    theme = "Catppuccin-Latte";
+    themeFile = "Catppuccin-Latte";
 
     keybindings = {
       "cmd+w" = "close_window";

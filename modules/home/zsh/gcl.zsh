@@ -1,7 +1,7 @@
 gcl() {
     setopt localoptions
     setopt unset
-    local descriptor="$1"
+    local descriptor="${1:-}"
     local url
     local urlhost
     local urlpath
@@ -62,6 +62,10 @@ gcl() {
     fi
 
     urlpath=${urlpath%.git}
+    if [[ -z $urlpath || $urlpath == /* || /$urlpath/ == *'/../'* || /$urlpath/ == *'/./'* ]]; then
+        print -u2 -- "Invalid repository path: $urlpath"
+        return 1
+    fi
 
     case $urlhost in
         github.com|\
@@ -71,10 +75,13 @@ gcl() {
             ;;
     esac
 
-
-    git clone "$url" "$HOME/Development/$urlhost/$urlpath"
-    echo "host=$urlhost"
-    echo "path=$urlpath"
-    echo "url=$url"
-    cd "$HOME/Development/$urlhost/$urlpath"
+    local destination="$HOME/Development/$urlhost/$urlpath"
+    if [[ ! -d "$destination/.jj" && ! -e "$destination/.git" ]]; then
+        if [[ -e "$destination" ]]; then
+            print -u2 -- "Not a repository: $destination"
+            return 1
+        fi
+        jj git clone --colocate "$url" "$destination" || return
+    fi
+    builtin cd -- "$destination"
 }
