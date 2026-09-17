@@ -2,6 +2,13 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-unstable";
 
+    agenix = {
+      url = "github:ryantm/agenix/b027ee29d959fda4b60b57566d64c98a202e0feb";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.darwin.follows = "nix-darwin";
+      inputs.home-manager.follows = "home-manager";
+    };
+
     disko = {
       url = "github:nix-community/disko/de5708739256238fb912c62f03988815db89ec9a";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -51,6 +58,7 @@
 
           modules = [
             ./modules/nixos/base.nix
+            inputs.agenix.nixosModules.default
             inputs.disko.nixosModules.disko
             home-manager.nixosModules.home-manager
             host
