@@ -9,8 +9,6 @@
   networking = {
     hostName = "ochazuke";
     hostId = "c9fb946d";
-    useDHCP = false;
-    interfaces.enp4s0.useDHCP = true;
   };
 
   boot.loader = {

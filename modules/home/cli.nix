@@ -10,6 +10,7 @@
     jujutsu
 
     rustup
+    nixfmt
     _1password-cli
 
     comma-with-db

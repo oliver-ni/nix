@@ -1,10 +1,7 @@
 { ... }:
 
 {
-  users.users.oliver = {
-    name = "oliver";
-    home = "/Users/oliver";
-  };
+  users.users.oliver.home = "/Users/oliver";
 
   system.primaryUser = "oliver";
 

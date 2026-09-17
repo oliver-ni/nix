@@ -7,6 +7,7 @@ let
     rev = "b2ee5dbd3d03717a596d69ee3f6dc6de8b140128";
     sha256 = "TCk26Wdo35uKyTjcpFLHl5StQOOmOXHuMq4L13EPp0U=";
   };
+
   jj-aliases = pkgs.fetchFromGitHub {
     owner = "oliver-ni";
     repo = "jj-aliases";
@@ -25,12 +26,41 @@ in
     };
 
     plugins = [
-      { name = "powerlevel10k"; src = pkgs.zsh-powerlevel10k; file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme"; }
-      { name = "powerlevel10k-config"; src = lib.cleanSource ./zsh; file = "p10k.zsh"; }
-      { name = "gcl"; src = lib.cleanSource ./zsh; file = "gcl.zsh"; }
-      { name = "tmp"; src = lib.cleanSource ./zsh; file = "tmp.zsh"; }
-      { name = "kubectl-aliases"; src = kubectl-aliases; file = ".kubectl_aliases"; }
-      { name = "jj-aliases"; src = jj-aliases; file = ".jj_aliases"; }
+      {
+        name = "powerlevel10k";
+        src = pkgs.zsh-powerlevel10k;
+        file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
+      }
+
+      {
+        name = "powerlevel10k-config";
+        src = lib.cleanSource ./zsh;
+        file = "p10k.zsh";
+      }
+
+      {
+        name = "gcl";
+        src = lib.cleanSource ./zsh;
+        file = "gcl.zsh";
+      }
+
+      {
+        name = "tmp";
+        src = lib.cleanSource ./zsh;
+        file = "tmp.zsh";
+      }
+
+      {
+        name = "kubectl-aliases";
+        src = kubectl-aliases;
+        file = ".kubectl_aliases";
+      }
+
+      {
+        name = "jj-aliases";
+        src = jj-aliases;
+        file = ".jj_aliases";
+      }
     ];
 
     initContent = lib.mkMerge [
@@ -81,7 +111,8 @@ in
       gensec = "${lib.getExe pkgs.openssl} rand -hex 16";
       dotenv = "set -o allexport; source .env; set +o allexport";
       "$" = "";
-    } // lib.optionalAttrs pkgs.stdenv.isDarwin {
+    }
+    // lib.optionalAttrs pkgs.stdenv.isDarwin {
       flushdns = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
     };
   };
