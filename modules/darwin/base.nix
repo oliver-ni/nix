@@ -14,7 +14,10 @@
   security.pam.services.sudo_local.touchIdAuth = true;
 
   programs = {
-    direnv.enable = true;
+    # direnv is managed by home-manager instead
+    zsh.enableCompletion = false;
+    zsh.enableBashCompletion = false;
+    zsh.promptInit = "";
   };
 
   homebrew = {

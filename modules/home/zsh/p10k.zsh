@@ -1617,6 +1617,10 @@
   #               typed after changing current working directory.
   typeset -g POWERLEVEL9K_TRANSIENT_PROMPT=always
 
+  # Enable OSC 133 shell integration marks (prompt start/end) for terminal features
+  # like Ghostty's jump_to_prompt.
+  typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true
+
   # Instant prompt mode.
   #
   #   - off:     Disable instant prompt. Choose this if you've tried instant prompt and found
