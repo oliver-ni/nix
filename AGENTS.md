@@ -7,6 +7,7 @@
 - Collapse single-child attribute nesting into dotted paths. Keep attribute sets where they group multiple settings.
 - Use blank lines between logical sections and sibling blocks; keep closely related scalar settings together.
 - Omit settings that merely repeat defaults unless they document an important hardware or safety requirement; check the pinned module defaults before removing them.
+- The Macs use Determinate Nix. Keep `nix.enable = false`, but manage `/etc/nix/registry.json` through `environment.etc`, using the `nix.registry` declarations. Do not let nix-darwin replace Determinate's daemon or `nix.conf`.
 
 # Verification
 
