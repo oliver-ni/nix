@@ -14,6 +14,6 @@
 - Darwin hosts that enable Homebrew must set `system.primaryUser`.
 - NixOS hosts use integrated Home Manager; their home configurations are activated with the system.
 - Keep hardware detection and Disko together in `hardware/<host>.nix`. Use `sudo nixos-generate-config --no-filesystems --show-hardware-config` on the target to refresh detection, preserving the handwritten disk layout.
-- Disko manages only ochazuke's NVMe OS disk. Never add the existing `zfs78` HDD pool to its destructive layout. Its generated script recursively unmounts `/mnt`; finish and verify any migration using that mount tree, then cleanly export the pool before running it.
+- Disko manages only ochazuke's NVMe OS disk and its `nixos` root pool (`root`, `nix`, `var`, and `home` datasets). Never add the existing `zfs78` HDD pool to its destructive layout. Its generated script recursively unmounts `/mnt`; finish and verify any migration using that mount tree, then cleanly export the pool before running it.
 - Build NixOS on an x86_64 Linux machine with `nix build --no-link --no-write-lock-file .#nixosConfigurations.ochazuke.config.system.build.toplevel`; evaluation alone also works on macOS.
 - Keep ad-hoc verification scripts outside the repository; do not commit tests unless requested.
