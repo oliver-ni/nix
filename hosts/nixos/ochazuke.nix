@@ -2,7 +2,7 @@
 
 {
   imports = [
-    ../../hardware/ochazuke
+    ../../hardware/ochazuke.nix
     ../../modules/nixos/zfs.nix
   ];
 
