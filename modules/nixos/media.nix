@@ -5,22 +5,31 @@ let
   group = "media";
 
   # The *arr services take their API key via an environment variable, but the
-  # age secret holds only the bare key so Recyclarr can read it too. Bridge the
-  # two with a runtime env file.
+  # age secret holds only the bare key so Recyclarr can read it too. A oneshot
+  # ordered before each service writes the env file; systemd reads
+  # EnvironmentFile before ExecStartPre, so preStart is too late.
   arrApiKey = name: {
     age.secrets."${name}-api-key".file = ../../secrets/${name}-api-key.age;
 
-    systemd.services.${name} = {
+    systemd.services."${name}-env" = {
+      before = [ "${name}.service" ];
+      requiredBy = [ "${name}.service" ];
       serviceConfig = {
+        Type = "oneshot";
         RuntimeDirectory = name;
-        EnvironmentFile = "-/run/${name}/env";
-        UMask = "0002";
+        RuntimeDirectoryPreserve = true;
       };
-      preStart = ''
+      script = ''
+        umask 077
         printf '${lib.toUpper name}__AUTH__APIKEY=%s\n' "$(cat ${
           config.age.secrets."${name}-api-key".path
         })" > /run/${name}/env
       '';
+    };
+
+    systemd.services.${name}.serviceConfig = {
+      EnvironmentFile = "/run/${name}/env";
+      UMask = "0002";
     };
   };
 in
