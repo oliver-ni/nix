@@ -25,6 +25,17 @@
         ];
       };
 
+      nixosSystem = system: host: nixpkgs.lib.nixosSystem {
+        inherit system;
+        pkgs = pkgsFor system;
+        specialArgs = { inherit inputs; };
+        modules = [
+          ./modules/nixos/base.nix
+          home-manager.nixosModules.home-manager
+          host
+        ];
+      };
+
       darwinSystem = host: nix-darwin.lib.darwinSystem rec {
         inherit inputs;
         system = "aarch64-darwin";
@@ -41,6 +52,10 @@
     in
     {
       formatter = forAllSystems (pkgs: pkgs.nixpkgs-fmt);
+
+      nixosConfigurations = {
+        ochazuke = nixosSystem "x86_64-linux" ./hosts/nixos/ochazuke.nix;
+      };
 
       darwinConfigurations = {
         onigiri = darwinSystem ./hosts/darwin/onigiri.nix;

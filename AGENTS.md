@@ -12,4 +12,7 @@
 - Build Home Manager without activation or replacing `result`: `nix build --no-link --no-write-lock-file '.#homeConfigurations."oliver@onigiri".activationPackage' '.#homeConfigurations."oliver@tempura".activationPackage'`.
 - For layout-only changes, compare derivation paths before and after. Darwin configurations with Nix enabled include the repository's own source in the Nix registry, so source-only changes can alter their derivations.
 - Darwin hosts that enable Homebrew must set `system.primaryUser`.
+- NixOS hosts use integrated Home Manager; their home configurations are activated with the system.
+- Generate hardware detection on the target with `sudo nixos-generate-config --no-filesystems --show-hardware-config`; keep filesystem layout in the host configuration.
+- Build NixOS on an x86_64 Linux machine with `nix build --no-link --no-write-lock-file .#nixosConfigurations.ochazuke.config.system.build.toplevel`; evaluation alone also works on macOS.
 - Keep ad-hoc verification scripts outside the repository; do not commit tests unless requested.
