@@ -81,33 +81,34 @@ in
       settings.auth.method = "External";
     };
 
+    # Only Sonarr/Radarr talk to Prowlarr and qBittorrent; reach the UIs over
+    # an SSH tunnel when needed.
     prowlarr = {
       enable = true;
-      openFirewall = true;
-      settings.auth.method = "External";
+      settings = {
+        auth.method = "External";
+        server.bindaddress = "127.0.0.1";
+      };
     };
 
     qbittorrent = {
       inherit group;
       enable = true;
-      openFirewall = true;
-      webuiPort = 8080;
 
       serverConfig = {
         LegalNotice.Accepted = true;
+        BitTorrent.Session.DefaultSavePath = "${mediaDir}/torrents";
 
         Preferences = {
+          Downloads.SavePath = "${mediaDir}/torrents";
+
           WebUI = {
+            Address = "127.0.0.1";
             Username = "oliver";
             Password_PBKDF2 = "@ByteArray(4ymIqSh4kJCi4ggUdRXEfA==:rBBpEBessypr2kwS8L2I9Czra2Fw+o9kBj0HJa5eUaxA6SAflEWROohw4hPTr6MDQ1CN4kBGygQaAcqwI0KDvA==)";
-            AuthSubnetWhitelistEnabled = true;
-            AuthSubnetWhitelist = "192.168.1.0/24";
+            LocalHostAuth = false;
           };
-
-          Downloads.SavePath = "${mediaDir}/downloads";
         };
-
-        BitTorrent.Session.DefaultSavePath = "${mediaDir}/downloads";
       };
     };
 
@@ -133,10 +134,10 @@ in
     # Shared group + setgid dirs + UMask 0002 lets every service read and
     # rename each other's files, which hardlink imports depend on.
     tmpfiles.rules = map (d: "d ${mediaDir}/${d} 2775 root ${group} -") [
-      "downloads"
-      "downloads/anime"
-      "downloads/tv"
-      "downloads/movies"
+      "torrents"
+      "torrents/anime"
+      "torrents/tv"
+      "torrents/movies"
       "library"
       "library/anime"
       "library/tv"
