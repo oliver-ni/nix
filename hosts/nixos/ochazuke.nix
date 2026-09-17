@@ -2,7 +2,7 @@
 
 {
   imports = [
-    ../../hardware/ochazuke.nix
+    ../../hardware/ochazuke
     ../../modules/nixos/zfs.nix
   ];
 
@@ -16,17 +16,6 @@
   boot.loader = {
     systemd-boot.enable = true;
     efi.canTouchEfiVariables = true;
-  };
-
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "ext4";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/BOOT";
-    fsType = "vfat";
-    options = [ "fmask=0077" "dmask=0077" ];
   };
 
   boot.zfs.extraPools = [ "zfs78" ];

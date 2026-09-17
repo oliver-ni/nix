@@ -1,6 +1,10 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-unstable";
+    disko = {
+      url = "github:nix-community/disko/de5708739256238fb912c62f03988815db89ec9a";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nix-index-database = {
       url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -31,6 +35,7 @@
         specialArgs = { inherit inputs; };
         modules = [
           ./modules/nixos/base.nix
+          inputs.disko.nixosModules.disko
           home-manager.nixosModules.home-manager
           host
         ];
