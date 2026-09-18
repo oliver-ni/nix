@@ -26,39 +26,59 @@ in
       };
       environmentFile = "/run/caddy/env";
 
-      # One wildcard cert via DNS-01, so no port 80 challenge and no
-      # per-service certificate churn.
-      globalConfig = ''
-        acme_dns cloudflare {env.CF_API_TOKEN}
-      '';
-
-      virtualHosts = {
-        ${domain}.extraConfig = "redir https://jellyfin.${domain}";
-        "jellyfin.${domain}".extraConfig = "reverse_proxy localhost:8096";
-        "requests.${domain}".extraConfig = "reverse_proxy localhost:5055";
-
-        "sonarr.${domain}".extraConfig = ''
-          import lan_only 8989
-        '';
-        "radarr.${domain}".extraConfig = ''
-          import lan_only 7878
-        '';
-        "prowlarr.${domain}".extraConfig = ''
-          import lan_only 9696
-        '';
-        "qbittorrent.${domain}".extraConfig = ''
-          import lan_only 8080
-        '';
-      };
-
-      # Everything except Jellyfin is only for use from home.
+      # One wildcard certificate via DNS-01 covers every hostname, so adding a
+      # service never triggers a new issuance (which needs the fresh name to be
+      # visible to public resolvers before it can succeed).
       extraConfig = ''
-        (lan_only) {
-          @lan remote_ip 192.168.1.0/24
-          handle @lan {
-            reverse_proxy localhost:{args[0]}
+        ${domain}, *.${domain} {
+          tls {
+            dns cloudflare {env.CF_API_TOKEN}
+            resolvers 1.1.1.1
           }
-          respond 403
+
+          @root host ${domain}
+          handle @root {
+            redir https://jellyfin.${domain}
+          }
+
+          @jellyfin host jellyfin.${domain}
+          handle @jellyfin {
+            reverse_proxy localhost:8096
+          }
+
+          @requests host requests.${domain}
+          handle @requests {
+            reverse_proxy localhost:5055
+          }
+
+          # Everything else is only for use from home.
+          @lan remote_ip 192.168.1.0/24
+
+          @sonarr host sonarr.${domain}
+          handle @sonarr {
+            reverse_proxy @lan localhost:8989
+            respond 403
+          }
+
+          @radarr host radarr.${domain}
+          handle @radarr {
+            reverse_proxy @lan localhost:7878
+            respond 403
+          }
+
+          @prowlarr host prowlarr.${domain}
+          handle @prowlarr {
+            reverse_proxy @lan localhost:9696
+            respond 403
+          }
+
+          @qbittorrent host qbittorrent.${domain}
+          handle @qbittorrent {
+            reverse_proxy @lan localhost:8080
+            respond 403
+          }
+
+          respond 404
         }
       '';
     };
