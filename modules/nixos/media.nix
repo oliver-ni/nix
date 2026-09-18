@@ -57,8 +57,8 @@ in
     };
   };
 
-  # Jellyfin serves LAN clients directly; everything else binds to localhost
-  # until a reverse proxy fronts it.
+  # Only Jellyfin is reachable from the LAN; use an SSH tunnel for the rest
+  # until a reverse proxy fronts them.
   services = {
     xserver.videoDrivers = [ "nvidia" ];
 
@@ -71,30 +71,18 @@ in
     sonarr = {
       inherit group;
       enable = true;
-
-      settings = {
-        auth.method = "External";
-        server.bindaddress = "127.0.0.1";
-      };
+      settings.auth.method = "External";
     };
 
     radarr = {
       inherit group;
       enable = true;
-
-      settings = {
-        auth.method = "External";
-        server.bindaddress = "127.0.0.1";
-      };
+      settings.auth.method = "External";
     };
 
     prowlarr = {
       enable = true;
-
-      settings = {
-        auth.method = "External";
-        server.bindaddress = "127.0.0.1";
-      };
+      settings.auth.method = "External";
     };
 
     qbittorrent = {
@@ -107,11 +95,7 @@ in
 
         Preferences = {
           Downloads.SavePath = "${mediaDir}/torrents";
-
-          WebUI = {
-            Address = "127.0.0.1";
-            LocalHostAuth = false;
-          };
+          WebUI.LocalHostAuth = false;
         };
       };
     };
