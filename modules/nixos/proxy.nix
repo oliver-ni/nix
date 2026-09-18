@@ -1,7 +1,7 @@
 { config, pkgs, ... }:
 
 let
-  domain = "140.oliver.ni";
+  domain = "ochazuke.org";
 in
 {
   age.secrets.cloudflare-api-token.file = ../../secrets/cloudflare-api-token.age;
