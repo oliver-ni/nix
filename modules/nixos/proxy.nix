@@ -35,6 +35,7 @@ in
       virtualHosts = {
         ${domain}.extraConfig = "redir https://jellyfin.${domain}";
         "jellyfin.${domain}".extraConfig = "reverse_proxy localhost:8096";
+        "requests.${domain}".extraConfig = "reverse_proxy localhost:5055";
 
         "sonarr.${domain}".extraConfig = ''
           import lan_only 8989

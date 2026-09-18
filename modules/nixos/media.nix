@@ -100,6 +100,8 @@ in
       };
     };
 
+    seerr.enable = true;
+
     recyclarr = {
       enable = true;
 
