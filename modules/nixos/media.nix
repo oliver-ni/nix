@@ -11,7 +11,7 @@ let
   arrApiKeyUnits = name: {
     ${name}.serviceConfig = {
       EnvironmentFile = "/run/${name}/env";
-      UMask = "0002";
+      UMask = lib.mkForce "0002";
     };
 
     "${name}-env" = {
@@ -46,12 +46,12 @@ in
   };
 
   # NVENC transcoding on the GTX 1060. Pascal support ended with the 580
-  # branch, so pin it to avoid a future flake update silently pulling 590.
+  # branch; newer drivers refuse to load on it.
   hardware = {
     graphics.enable = true;
 
     nvidia = {
-      package = config.boot.kernelPackages.nvidiaPackages.stable;
+      package = config.boot.kernelPackages.nvidiaPackages.legacy_580;
       open = false;
       nvidiaSettings = false;
     };
@@ -103,16 +103,19 @@ in
     recyclarr = {
       enable = true;
 
+      # TRaSH's "[Anime] Remux-1080p" profile; its custom formats are synced
+      # automatically from the trash_id.
       configuration.sonarr.anime = {
         base_url = "http://localhost:8989";
         api_key._secret = config.age.secrets.sonarr-api-key.path;
         quality_definition.type = "anime";
         delete_old_custom_formats = true;
         replace_existing_custom_formats = true;
-        include = [
-          { template = "sonarr-quality-definition-anime"; }
-          { template = "sonarr-v4-quality-profile-anime"; }
-          { template = "sonarr-v4-custom-formats-anime"; }
+        quality_profiles = [
+          {
+            trash_id = "20e0fc959f1f1704bed501f23bdae76f";
+            reset_unmatched_scores.enabled = true;
+          }
         ];
       };
     };
