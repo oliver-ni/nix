@@ -1,4 +1,9 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   mediaDir = "/zfs78/media";
@@ -32,6 +37,16 @@ let
       '';
     };
   };
+
+  # Jellyfin has no bind-address flag; seed network.xml before first start.
+  jellyfinNetwork = pkgs.writeText "network.xml" ''
+    <?xml version="1.0" encoding="utf-8"?>
+    <NetworkConfiguration>
+      <LocalNetworkAddresses>
+        <string>127.0.0.1</string>
+      </LocalNetworkAddresses>
+    </NetworkConfiguration>
+  '';
 in
 {
   users = {
@@ -58,33 +73,38 @@ in
     };
   };
 
+  # Everything binds to localhost; a reverse proxy will front the UIs later.
   services = {
     xserver.videoDrivers = [ "nvidia" ];
 
     jellyfin = {
       inherit group;
       enable = true;
-      openFirewall = true;
     };
 
     sonarr = {
       inherit group;
       enable = true;
-      openFirewall = true;
-      settings.auth.method = "External";
+
+      settings = {
+        auth.method = "External";
+        server.bindaddress = "127.0.0.1";
+      };
     };
 
     radarr = {
       inherit group;
       enable = true;
-      openFirewall = true;
-      settings.auth.method = "External";
+
+      settings = {
+        auth.method = "External";
+        server.bindaddress = "127.0.0.1";
+      };
     };
 
-    # Only Sonarr/Radarr talk to Prowlarr and qBittorrent; reach the UIs over
-    # an SSH tunnel when needed.
     prowlarr = {
       enable = true;
+
       settings = {
         auth.method = "External";
         server.bindaddress = "127.0.0.1";
@@ -104,8 +124,6 @@ in
 
           WebUI = {
             Address = "127.0.0.1";
-            Username = "oliver";
-            Password_PBKDF2 = "@ByteArray(4ymIqSh4kJCi4ggUdRXEfA==:rBBpEBessypr2kwS8L2I9Czra2Fw+o9kBj0HJa5eUaxA6SAflEWROohw4hPTr6MDQ1CN4kBGygQaAcqwI0KDvA==)";
             LocalHostAuth = false;
           };
         };
@@ -133,16 +151,21 @@ in
   systemd = {
     # Shared group + setgid dirs + UMask 0002 lets every service read and
     # rename each other's files, which hardlink imports depend on.
-    tmpfiles.rules = map (d: "d ${mediaDir}/${d} 2775 root ${group} -") [
-      "torrents"
-      "torrents/anime"
-      "torrents/tv"
-      "torrents/movies"
-      "library"
-      "library/anime"
-      "library/tv"
-      "library/movies"
-    ];
+    tmpfiles.rules =
+      map (d: "d ${mediaDir}/${d} 2775 root ${group} -") [
+        "torrents"
+        "torrents/anime"
+        "torrents/tv"
+        "torrents/movies"
+        "library"
+        "library/anime"
+        "library/tv"
+        "library/movies"
+      ]
+      ++ [
+        "d /var/lib/jellyfin/config 0750 jellyfin ${group} -"
+        "C /var/lib/jellyfin/config/network.xml 0640 jellyfin ${group} - ${jellyfinNetwork}"
+      ];
 
     services = {
       jellyfin.serviceConfig.UMask = lib.mkForce "0002";
