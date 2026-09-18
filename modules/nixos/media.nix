@@ -1,9 +1,4 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+{ config, lib, ... }:
 
 let
   mediaDir = "/zfs78/media";
@@ -37,16 +32,6 @@ let
       '';
     };
   };
-
-  # Jellyfin has no bind-address flag; seed network.xml before first start.
-  jellyfinNetwork = pkgs.writeText "network.xml" ''
-    <?xml version="1.0" encoding="utf-8"?>
-    <NetworkConfiguration>
-      <LocalNetworkAddresses>
-        <string>127.0.0.1</string>
-      </LocalNetworkAddresses>
-    </NetworkConfiguration>
-  '';
 in
 {
   users = {
@@ -72,13 +57,15 @@ in
     };
   };
 
-  # Everything binds to localhost; a reverse proxy will front the UIs later.
+  # Jellyfin serves LAN clients directly; everything else binds to localhost
+  # until a reverse proxy fronts it.
   services = {
     xserver.videoDrivers = [ "nvidia" ];
 
     jellyfin = {
       inherit group;
       enable = true;
+      openFirewall = true;
     };
 
     sonarr = {
@@ -150,21 +137,16 @@ in
   systemd = {
     # Shared group + setgid dirs + UMask 0002 lets every service read and
     # rename each other's files, which hardlink imports depend on.
-    tmpfiles.rules =
-      map (d: "d ${mediaDir}/${d} 2775 root ${group} -") [
-        "torrents"
-        "torrents/anime"
-        "torrents/tv"
-        "torrents/movies"
-        "library"
-        "library/anime"
-        "library/tv"
-        "library/movies"
-      ]
-      ++ [
-        "d /var/lib/jellyfin/config 0750 jellyfin ${group} -"
-        "C /var/lib/jellyfin/config/network.xml 0640 jellyfin ${group} - ${jellyfinNetwork}"
-      ];
+    tmpfiles.rules = map (d: "d ${mediaDir}/${d} 2775 root ${group} -") [
+      "torrents"
+      "torrents/anime"
+      "torrents/tv"
+      "torrents/movies"
+      "library"
+      "library/anime"
+      "library/tv"
+      "library/movies"
+    ];
 
     services = {
       jellyfin.serviceConfig.UMask = lib.mkForce "0002";
