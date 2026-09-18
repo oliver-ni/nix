@@ -68,7 +68,6 @@ in
     nvidia = {
       package = config.boot.kernelPackages.nvidiaPackages.stable;
       open = false;
-      modesetting.enable = true;
       nvidiaSettings = false;
     };
   };
@@ -151,21 +150,12 @@ in
   systemd = {
     # Shared group + setgid dirs + UMask 0002 lets every service read and
     # rename each other's files, which hardlink imports depend on.
-    tmpfiles.rules =
-      map (d: "d ${mediaDir}/${d} 2775 root ${group} -") [
-        "torrents"
-        "torrents/anime"
-        "torrents/tv"
-        "torrents/movies"
-        "library"
-        "library/anime"
-        "library/tv"
-        "library/movies"
-      ]
-      ++ [
-        "d /var/lib/jellyfin/config 0750 jellyfin ${group} -"
-        "C /var/lib/jellyfin/config/network.xml 0640 jellyfin ${group} - ${jellyfinNetwork}"
-      ];
+    tmpfiles.rules = [
+      "d ${mediaDir}/torrents 2775 root ${group} -"
+      "d ${mediaDir}/library 2775 root ${group} -"
+      "d /var/lib/jellyfin/config 0750 jellyfin ${group} -"
+      "C /var/lib/jellyfin/config/network.xml 0640 jellyfin ${group} - ${jellyfinNetwork}"
+    ];
 
     services = {
       jellyfin.serviceConfig.UMask = lib.mkForce "0002";
