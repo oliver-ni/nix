@@ -4,6 +4,7 @@
   imports = [
     ../../hardware/ochazuke.nix
     ../../modules/nixos/media.nix
+    ../../modules/nixos/proxy.nix
     ../../modules/nixos/zfs.nix
   ];
 
