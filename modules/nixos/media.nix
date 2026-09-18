@@ -57,8 +57,8 @@ in
     };
   };
 
-  # Only Jellyfin is reachable from the LAN; use an SSH tunnel for the rest
-  # until a reverse proxy fronts them.
+  # Jellyfin and Seerr are public through the proxy; the admin UIs are only
+  # reachable over the tailnet.
   services = {
     xserver.videoDrivers = [ "nvidia" ];
 

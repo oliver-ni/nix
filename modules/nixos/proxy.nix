@@ -51,33 +51,6 @@ in
             reverse_proxy localhost:5055
           }
 
-          # Everything else is only for use from home.
-          @lan remote_ip 192.168.1.0/24
-
-          @sonarr host sonarr.${domain}
-          handle @sonarr {
-            reverse_proxy @lan localhost:8989
-            respond 403
-          }
-
-          @radarr host radarr.${domain}
-          handle @radarr {
-            reverse_proxy @lan localhost:7878
-            respond 403
-          }
-
-          @prowlarr host prowlarr.${domain}
-          handle @prowlarr {
-            reverse_proxy @lan localhost:9696
-            respond 403
-          }
-
-          @qbittorrent host qbittorrent.${domain}
-          handle @qbittorrent {
-            reverse_proxy @lan localhost:8080
-            respond 403
-          }
-
           respond 404
         }
       '';
