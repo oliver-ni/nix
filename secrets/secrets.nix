@@ -10,4 +10,5 @@ in
   "sonarr-api-key.age".publicKeys = keys;
   "radarr-api-key.age".publicKeys = keys;
   "prowlarr-api-key.age".publicKeys = keys;
+  "cloudflare-api-token.age".publicKeys = keys;
 }
