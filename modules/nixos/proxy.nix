@@ -33,6 +33,7 @@ in
       '';
 
       virtualHosts = {
+        ${domain}.extraConfig = "redir https://jellyfin.${domain}";
         "jellyfin.${domain}".extraConfig = "reverse_proxy localhost:8096";
 
         "sonarr.${domain}".extraConfig = ''
