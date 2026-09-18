@@ -63,21 +63,30 @@ in
     };
   };
 
-  # Caddy reads the token from an environment variable, but cloudflare-dyndns
-  # wants the bare file, so the age secret stays bare and a oneshot bridges.
-  systemd.services.caddy-env = {
-    before = [ "caddy.service" ];
-    requiredBy = [ "caddy.service" ];
-
-    serviceConfig = {
-      Type = "oneshot";
-      RuntimeDirectory = "caddy";
-      RuntimeDirectoryPreserve = true;
+  systemd.services = {
+    # The upstream unit only orders after network.target, so the boot run
+    # fires before DHCP finishes and fails until the timer's next tick.
+    cloudflare-dyndns = {
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
     };
 
-    script = ''
-      umask 077
-      printf 'CF_API_TOKEN=%s\n' "$(cat ${config.age.secrets.cloudflare-api-token.path})" > /run/caddy/env
-    '';
+    # Caddy reads the token from an environment variable, but cloudflare-dyndns
+    # wants the bare file, so the age secret stays bare and a oneshot bridges.
+    caddy-env = {
+      before = [ "caddy.service" ];
+      requiredBy = [ "caddy.service" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RuntimeDirectory = "caddy";
+        RuntimeDirectoryPreserve = true;
+      };
+
+      script = ''
+        umask 077
+        printf 'CF_API_TOKEN=%s\n' "$(cat ${config.age.secrets.cloudflare-api-token.path})" > /run/caddy/env
+      '';
+    };
   };
 }
