@@ -26,6 +26,22 @@ in
       };
       environmentFile = "/run/caddy/env";
 
+      virtualHosts."admin.accounts.${domain}".extraConfig = ''
+        tls {
+          dns cloudflare {env.CF_API_TOKEN}
+          resolvers 1.1.1.1
+        }
+
+        @tailnet remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+        handle @tailnet {
+          reverse_proxy localhost:8056
+        }
+
+        handle {
+          respond 404
+        }
+      '';
+
       # One wildcard certificate via DNS-01 covers every hostname, so adding a
       # service never triggers a new issuance (which needs the fresh name to be
       # visible to public resolvers before it can succeed).
