@@ -51,6 +51,29 @@ in
             reverse_proxy localhost:5055
           }
 
+          @accounts host accounts.${domain}
+          handle @accounts {
+            @inviteRead {
+              method GET HEAD
+              path /invite/* /css/* /js/* /fonts/* /lang/* /captcha/gen/* /captcha/img/* /favicon* /apple-touch-icon.png /site.webmanifest /safari-pinned-tab.svg /android-chrome-*.png
+            }
+            handle @inviteRead {
+              reverse_proxy localhost:8056
+            }
+
+            @inviteWrite {
+              method POST
+              path /user/invite /captcha/verify/*
+            }
+            handle @inviteWrite {
+              reverse_proxy localhost:8056
+            }
+
+            handle {
+              respond 404
+            }
+          }
+
           respond 404
         }
       '';

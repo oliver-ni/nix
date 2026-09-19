@@ -11,4 +11,5 @@ in
   "radarr-api-key.age".publicKeys = keys;
   "prowlarr-api-key.age".publicKeys = keys;
   "cloudflare-api-token.age".publicKeys = keys;
+  "jfa-go-config.age".publicKeys = keys;
 }

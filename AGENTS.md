@@ -21,3 +21,5 @@
 - Disko manages only ochazuke's NVMe OS disk and its `nixos` root pool (`root`, `nix`, `var`, and `home` datasets). Never add the existing `zfs78` HDD pool to its destructive layout. Its generated script recursively unmounts `/mnt`; finish and verify any migration using that mount tree, then cleanly export the pool before running it.
 - Build NixOS on an x86_64 Linux machine with `nix build --no-link --no-write-lock-file .#nixosConfigurations.ochazuke.config.system.build.toplevel`; evaluation alone also works on macOS.
 - Keep ad-hoc verification scripts outside the repository; do not commit tests unless requested.
+- jfa-go administration is on Tailscale port 8056; `accounts.ochazuke.org` exposes only invitation pages, their assets, and signup/CAPTCHA endpoints. Verify public admin routes return 404 when changing its proxy rules.
+- jfa-go seeds its mutable `/var/lib/jfa-go/config.ini` from the agenix credential only when absent. Back up its state directory along with Jellyfin; changing the encrypted seed does not update existing runtime settings.
