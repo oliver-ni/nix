@@ -4,6 +4,7 @@
   imports = [
     ../../hardware/ochazuke.nix
     ../../modules/nixos/media.nix
+    ../../modules/nixos/jellyfin-theme.nix
     ../../modules/nixos/jfa-go.nix
     ../../modules/nixos/proxy.nix
     ../../modules/nixos/tailscale.nix
