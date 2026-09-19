@@ -1,0 +1,15 @@
+:is(.layout-desktop, .layout-tv):not([dir="rtl"]) #itemDetailPage .detailPageSecondaryContainer {
+  padding-inline-start: 32.45vw !important;
+}
+
+@media (min-aspect-ratio: 1.98/1) {
+  :is(.layout-desktop, .layout-tv):not([dir="rtl"]) #itemDetailPage .detailPageSecondaryContainer {
+    padding-inline-start: 28.45vw !important;
+  }
+}
+
+@media (min-aspect-ratio: 2.7/1) {
+  :is(.layout-desktop, .layout-tv):not([dir="rtl"]) #itemDetailPage .detailPageSecondaryContainer {
+    padding-inline-start: 23.45vw !important;
+  }
+}
