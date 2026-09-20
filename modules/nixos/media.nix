@@ -107,18 +107,50 @@ in
 
       # TRaSH's "[Anime] Remux-1080p" profile; its custom formats are synced
       # automatically from the trash_id.
-      configuration.sonarr.anime = {
-        base_url = "http://localhost:8989";
-        api_key._secret = config.age.secrets.sonarr-api-key.path;
-        quality_definition.type = "anime";
-        delete_old_custom_formats = true;
-        replace_existing_custom_formats = true;
-        quality_profiles = [
-          {
-            trash_id = "20e0fc959f1f1704bed501f23bdae76f";
-            reset_unmatched_scores.enabled = true;
-          }
-        ];
+      configuration = {
+        sonarr.anime = {
+          base_url = "http://localhost:8989";
+          api_key._secret = config.age.secrets.sonarr-api-key.path;
+          quality_definition.type = "anime";
+          delete_old_custom_formats = true;
+          quality_profiles = [
+            {
+              trash_id = "20e0fc959f1f1704bed501f23bdae76f";
+              reset_unmatched_scores.enabled = true;
+            }
+          ];
+        };
+
+        # TRaSH's "Remux 2160p (Combined)" profile for movies with official UHD
+        # releases: 2160p first, 1080p fallback. The anime filters keep fan
+        # upscales and raw/LQ groups from counting as upgrades.
+        radarr.movies = {
+          base_url = "http://localhost:7878";
+          api_key._secret = config.age.secrets.radarr-api-key.path;
+          quality_definition.type = "movie";
+          delete_old_custom_formats = true;
+          quality_profiles = [
+            {
+              trash_id = "d1d310673359205736b4b84acd5ea8c8";
+              reset_unmatched_scores.enabled = true;
+            }
+          ];
+          custom_formats = [
+            {
+              trash_ids = [
+                "bfd8eb01832d646a0a89c4deb46f8564" # Upscaled
+                "06b6542a47037d1e33b15aa3677c2365" # Anime Raws
+                "b0fdc5897f68c9a68c70c25169f77447" # Anime LQ Groups
+              ];
+              assign_scores_to = [
+                {
+                  trash_id = "d1d310673359205736b4b84acd5ea8c8";
+                  score = -10000;
+                }
+              ];
+            }
+          ];
+        };
       };
     };
   };
