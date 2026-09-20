@@ -3,6 +3,7 @@
 {
   imports = [
     ../../hardware/ochazuke.nix
+    ../../modules/nixos/photos.nix
     ../../modules/nixos/media.nix
     ../../modules/nixos/jellyfin-theme.nix
     ../../modules/nixos/jfa-go.nix

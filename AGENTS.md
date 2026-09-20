@@ -7,6 +7,7 @@
 - Collapse single-child attribute nesting into dotted paths. Keep attribute sets where they group multiple settings.
 - Use blank lines between logical sections and sibling blocks; keep closely related scalar settings together.
 - Omit settings that merely repeat defaults unless they document an important hardware or safety requirement; check the pinned module defaults before removing them.
+- Keep services and integrations minimal; add optional daemons and hardware support only when needed for the current setup.
 - The Macs use Determinate Nix. Keep `nix.enable = false`, but manage `/etc/nix/registry.json` through `environment.etc`, using the `nix.registry` declarations. Do not let nix-darwin replace Determinate's daemon or `nix.conf`.
 
 # Verification
@@ -21,6 +22,7 @@
 - Disko manages only ochazuke's NVMe OS disk and its `nixos` root pool (`root`, `nix`, `var`, and `home` datasets). Never add the existing `zfs78` HDD pool to its destructive layout. Its generated script recursively unmounts `/mnt`; finish and verify any migration using that mount tree, then cleanly export the pool before running it.
 - Build NixOS on an x86_64 Linux machine with `nix build --no-link --no-write-lock-file .#nixosConfigurations.ochazuke.config.system.build.toplevel`; evaluation alone also works on macOS.
 - Keep ad-hoc verification scripts outside the repository; do not commit tests unless requested.
+- Photos are shared read-only to guests at `smb://192.168.1.49/photos` on the LAN and `smb://100.68.129.57/photos` over Tailscale. Keep AppleDouble conversion disabled to preserve the archive. Reconnect Mac shares after changing Samba's Apple extensions. Check `smbclient` output for write denial: it can exit successfully even when an SMB command fails.
 - jfa-go administration uses `https://admin.accounts.ochazuke.org` over Tailscale (DNS-only A record to `100.68.129.57`). HTTPS and this subdomain preserve its secure login cookie scoped to `accounts.ochazuke.org`. The public `accounts.ochazuke.org` exposes only invitation pages, their assets, and signup/CAPTCHA endpoints; verify public admin routes return 404 when changing its proxy rules.
 - jfa-go seeds its mutable `/var/lib/jfa-go/config.ini` from the agenix credential only when absent. Back up its state directory along with Jellyfin; changing the encrypted seed does not update existing runtime settings.
 - Jellyfin uses Abyss from `modules/nixos/jellyfin-theme.nix`; keep SleekFin disabled in Jellyfin's plugin manager to avoid overlapping themes. Existing installations need `@import url("ui/abyss.css");` in branding (POST `/System/Configuration/Branding`), since the module's tmpfiles rule only seeds missing branding.
