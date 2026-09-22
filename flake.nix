@@ -28,6 +28,11 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    jellyfin-client = {
+      url = "git+ssh://git@github.com/oliver-ni/jellyfin-client";
+      flake = false;
+    };
   };
 
   outputs =

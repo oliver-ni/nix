@@ -69,6 +69,22 @@
         "type": "github"
       }
     },
+    "jellyfin-client": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790103887,
+        "narHash": "sha256-T3xE9CrqfEKcx2ICwawxOoGAzpIgFzSnimX4ZJzAvVc=",
+        "ref": "refs/heads/main",
+        "rev": "2d1122b276ada2b8a439458ec74712df9a36b42d",
+        "revCount": 57,
+        "type": "git",
+        "url": "ssh://git@github.com/oliver-ni/jellyfin-client"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@github.com/oliver-ni/jellyfin-client"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
@@ -130,6 +146,7 @@
         "agenix": "agenix",
         "disko": "disko",
         "home-manager": "home-manager",
+        "jellyfin-client": "jellyfin-client",
         "nix-darwin": "nix-darwin",
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs"

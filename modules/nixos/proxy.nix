@@ -44,17 +44,13 @@ in
 
       # One wildcard certificate via DNS-01 covers every hostname, so adding a
       # service never triggers a new issuance (which needs the fresh name to be
-      # visible to public resolvers before it can succeed).
+      # visible to public resolvers before it can succeed). The apex is served
+      # by jellyfin-client.nix.
       extraConfig = ''
-        ${domain}, *.${domain} {
+        *.${domain} {
           tls {
             dns cloudflare {env.CF_API_TOKEN}
             resolvers 1.1.1.1
-          }
-
-          @root host ${domain}
-          handle @root {
-            redir https://jellyfin.${domain}
           }
 
           @jellyfin host jellyfin.${domain}
@@ -62,9 +58,10 @@ in
             reverse_proxy localhost:8096
           }
 
+          # Seerr's own UI is superseded by the client at the apex.
           @requests host requests.${domain}
           handle @requests {
-            reverse_proxy localhost:5055
+            redir https://${domain}{uri}
           }
 
           @accounts host accounts.${domain}

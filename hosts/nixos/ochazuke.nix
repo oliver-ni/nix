@@ -6,6 +6,7 @@
     ../../modules/nixos/home-assistant.nix
     ../../modules/nixos/photos.nix
     ../../modules/nixos/media.nix
+    ../../modules/nixos/jellyfin-client.nix
     ../../modules/nixos/jellyfin-theme.nix
     ../../modules/nixos/jfa-go.nix
     ../../modules/nixos/lolesports-kiosk.nix
