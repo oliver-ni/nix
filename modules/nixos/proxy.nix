@@ -58,10 +58,10 @@ in
             reverse_proxy localhost:8096
           }
 
-          # Seerr's own UI is superseded by the client at the apex.
+          # The client covers requesting; Seerr's own UI stays for its admin.
           @requests host requests.${domain}
           handle @requests {
-            redir https://${domain}{uri}
+            reverse_proxy localhost:5055
           }
 
           @accounts host accounts.${domain}
