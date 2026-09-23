@@ -27,6 +27,11 @@
 
   boot.zfs.extraPools = [ "zfs78" ];
 
+  # Long-haul transfers (the Amsterdam seedbox, remote Jellyfin streams) fold
+  # under cubic on any packet loss; BBR keeps the window open.
+  boot.kernelModules = [ "tcp_bbr" ];
+  boot.kernel.sysctl."net.ipv4.tcp_congestion_control" = "bbr";
+
   users.users.oliver = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
