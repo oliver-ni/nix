@@ -95,6 +95,9 @@ in
         CacheDirectory = "seedbox-pull";
         LoadCredential = "password:${config.age.secrets.seedbox-password.path}";
         ExecStart = "${pull}/bin/seedbox-pull";
+        # rclone can sit in a blocked SFTP read on SIGTERM; killing it is safe
+        # because in-flight files are temp-named and resume on the next run.
+        TimeoutStopSec = 30;
       };
     };
 
