@@ -22,6 +22,29 @@ in
       reverse_proxy localhost:5055
     }
 
+    # Read-only Sonarr diagnostics for the requests page, keyed server-side
+    # and open only to browsers holding a Seerr session (Sonarr itself has no
+    # login). Mirrors docker/proxies.sh in the client repo.
+    @sonarr {
+      method GET
+      path_regexp ^/sonarr/api/v3/(system/status|series/[0-9]+|episode|queue)$
+    }
+    handle @sonarr {
+      forward_auth localhost:5055 {
+        # The trailing `?` drops the client's query string, which Seerr's
+        # validator would otherwise reject as unknown parameters.
+        uri /api/v1/auth/me?
+      }
+      uri strip_prefix /sonarr
+      reverse_proxy localhost:8989 {
+        header_up X-Api-Key {env.SONARR_API_KEY}
+        header_up -Cookie
+      }
+    }
+    handle /sonarr/* {
+      respond 404
+    }
+
     @assets path /assets/*
     header @assets Cache-Control "public, max-age=31536000, immutable"
 

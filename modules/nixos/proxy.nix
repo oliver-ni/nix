@@ -147,7 +147,10 @@ in
 
       script = ''
         umask 077
-        printf 'CF_API_TOKEN=%s\n' "$(cat ${config.age.secrets.cloudflare-api-token.path})" > /run/caddy/env
+        {
+          printf 'CF_API_TOKEN=%s\n' "$(cat ${config.age.secrets.cloudflare-api-token.path})"
+          printf 'SONARR_API_KEY=%s\n' "$(cat ${config.age.secrets.sonarr-api-key.path})"
+        } > /run/caddy/env
       '';
     };
   };
