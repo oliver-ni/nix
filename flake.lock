@@ -78,15 +78,15 @@
       "locked": {
         "lastModified": 1790146937,
         "narHash": "sha256-UjXnIe4J7ZSWgNme2eVEmgBNc/33HTxgf6Mt2eDOpOw=",
-        "ref": "refs/heads/main",
+        "owner": "oliver-ni",
+        "repo": "jellyfin-client",
         "rev": "49ba60683528f277b8883696f35e43f1d827ec02",
-        "revCount": 73,
-        "type": "git",
-        "url": "ssh://git@github.com/oliver-ni/jellyfin-client"
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "ssh://git@github.com/oliver-ni/jellyfin-client"
+        "owner": "oliver-ni",
+        "repo": "jellyfin-client",
+        "type": "github"
       }
     },
     "nix-darwin": {

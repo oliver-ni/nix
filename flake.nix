@@ -30,7 +30,7 @@
     };
 
     jellyfin-client = {
-      url = "git+ssh://git@github.com/oliver-ni/jellyfin-client";
+      url = "github:oliver-ni/jellyfin-client";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
