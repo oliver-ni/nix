@@ -31,7 +31,7 @@
 
     jellyfin-client = {
       url = "git+ssh://git@github.com/oliver-ni/jellyfin-client";
-      flake = false;
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
