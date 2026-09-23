@@ -1,7 +1,35 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   domain = "ochazuke.org";
+
+  # Admin UIs reachable only from the tailnet, at <name>.${domain}. Their DNS
+  # records point at ochazuke's Tailscale address, so public resolvers hand
+  # out an IP nobody outside the tailnet can reach; the remote_ip check is the
+  # second lock.
+  tailnetOnly = {
+    sonarr = 8989;
+    radarr = 7878;
+    prowlarr = 9696;
+    qbittorrent = 8080;
+    ha = 8123;
+  };
+  tailnetHosts = lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (name: port: ''
+      @${name} host ${name}.${domain}
+      handle @${name} {
+        handle @tailnet {
+          reverse_proxy localhost:${toString port}
+        }
+        respond 404
+      }
+    '') tailnetOnly
+  );
 in
 {
   age.secrets.cloudflare-api-token.file = ../../secrets/cloudflare-api-token.age;
@@ -53,10 +81,14 @@ in
             resolvers 1.1.1.1
           }
 
+          @tailnet remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+
           @jellyfin host jellyfin.${domain}
           handle @jellyfin {
             reverse_proxy localhost:8096
           }
+
+          ${tailnetHosts}
 
           # The client covers requesting; Seerr's own UI stays for its admin.
           @requests host requests.${domain}
