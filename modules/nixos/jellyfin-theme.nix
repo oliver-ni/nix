@@ -12,7 +12,7 @@ let
     postInstall = (old.postInstall or "") + ''
       web="$out/share/jellyfin-web"
       mkdir -p "$web/ui"
-      cat ${abyss}/abyss.css ${./jellyfin-theme.css} > "$web/ui/abyss.css"
+      cat ${abyss}/abyss.css ${./jellyfin-theme/overrides.css} > "$web/ui/abyss.css"
       cp ${abyss}/scripts/spotlight/{spotlight.html,spotlight.css,spotlight-loader.js} "$web/ui/"
       substituteInPlace "$web/index.html" \
         --replace-fail '</body>' '<script src="ui/spotlight-loader.js" data-abyss-spotlight></script></body>'
