@@ -72,11 +72,11 @@
     "jellyfin-client": {
       "flake": false,
       "locked": {
-        "lastModified": 1790134077,
-        "narHash": "sha256-maqkWyScun9AlQhzB0raOVEXxHfYWw/eoxaAzqxOmv8=",
+        "lastModified": 1790136241,
+        "narHash": "sha256-wPlL3cbLnO1e1q0uby6Ywrs++grsvClVyqhxxWMKzpk=",
         "ref": "refs/heads/main",
-        "rev": "d1404351afd0319fcd11dcb7f48943ab4115ace1",
-        "revCount": 69,
+        "rev": "435750e13ba27e2aafe5f9284925b57eff9190eb",
+        "revCount": 72,
         "type": "git",
         "url": "ssh://git@github.com/oliver-ni/jellyfin-client"
       },
