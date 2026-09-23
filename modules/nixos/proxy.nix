@@ -16,7 +16,6 @@ let
     sonarr = 8989;
     radarr = 7878;
     prowlarr = 9696;
-    qbittorrent = 8080;
     ha = 8123;
   };
   tailnetHosts = lib.concatStringsSep "\n" (
