@@ -34,8 +34,8 @@ let
   };
 in
 {
-  # The arrs and qBittorrent run without their own login, so they bind to
-  # loopback and are reached only through Caddy's tailnet-only hostnames.
+  # The arrs run without their own login, so they bind to loopback and are
+  # reached only through Caddy's tailnet-only hostnames.
   users = {
     groups.${group} = { };
     users.oliver.extraGroups = [ group ];
@@ -93,31 +93,6 @@ in
       settings = {
         auth.method = "External";
         server.bindAddress = "127.0.0.1";
-      };
-    };
-
-    qbittorrent = {
-      inherit group;
-      enable = true;
-
-      serverConfig = {
-        LegalNotice.Accepted = true;
-        BitTorrent.Session.DefaultSavePath = "${mediaDir}/torrents";
-
-        Preferences = {
-          Downloads.SavePath = "${mediaDir}/torrents";
-          WebUI.Address = "127.0.0.1";
-          WebUI.LocalHostAuth = false;
-          # Dead public batches (0 seeds) must not hold the active-download
-          # slots hostage; a torrent under 50 KiB/s for a minute stops counting.
-          Queueing = {
-            MaxActiveDownloads = 5;
-            MaxActiveTorrents = 10;
-            IgnoreSlowTorrents = true;
-            SlowTorrentsDownloadRate = 50;
-            SlowTorrentsInactivityTimer = 60;
-          };
-        };
       };
     };
 
@@ -187,9 +162,6 @@ in
     # rename each other's files, which hardlink imports depend on.
     tmpfiles.rules = map (d: "d ${mediaDir}/${d} 2775 root ${group} -") [
       "torrents"
-      "torrents/anime"
-      "torrents/tv"
-      "torrents/movies"
       "library"
       "library/anime"
       "library/tv"
@@ -198,7 +170,6 @@ in
 
     services = {
       jellyfin.serviceConfig.UMask = lib.mkForce "0002";
-      qbittorrent.serviceConfig.UMask = "0002";
     }
     // arrApiKeyUnits "sonarr"
     // arrApiKeyUnits "radarr"
