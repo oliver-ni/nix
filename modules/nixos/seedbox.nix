@@ -22,7 +22,9 @@ let
       key_file = config.age.secrets.seedbox-ssh-key.path;
       known_hosts_file = knownHosts;
       host_key_algorithms = "ssh-ed25519";
-      set_modtime = false;
+      # Never run md5sum on the slot: the shared HDD is what qBittorrent is
+      # writing to.
+      disable_hashcheck = true;
     };
   };
 in
@@ -52,6 +54,9 @@ in
     # in-flight files under a temp name so the arrs never see a half-copied
     # release; `--min-age` skips anything qBittorrent touched in the last
     # minute. Only the arr categories come home; the slot's other folders stay.
+    # `--size-only`: finished torrent files never change, and modtimes of
+    # already-landed copies do not match the slot's, so size is the only
+    # comparison that neither re-copies nor hashes.
     services.seedbox-pull = {
       description = "Pull completed seedbox downloads home";
       after = [ "network-online.target" ];
@@ -62,7 +67,7 @@ in
         RCLONE_CACHE_DIR = "/var/cache/seedbox-pull";
       };
       script = ''
-        rclone copy --inplace=false --min-age 1m --transfers 8 --multi-thread-streams 4 \
+        rclone copy --inplace=false --size-only --min-age 1m --transfers 8 --multi-thread-streams 4 \
           --include '/{sonarr,radarr}/**' "seedbox:${remoteDownloads}" "${localDownloads}"
       '';
       serviceConfig = {
