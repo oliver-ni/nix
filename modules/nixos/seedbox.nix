@@ -4,70 +4,60 @@ let
   mediaDir = "/zfs78/media";
   group = "media";
 
-  host = "swift-009.seedbox.vip";
-  port = 63526;
-  user = "rapidseedbox101809";
+  host = "45.136.230.38";
+  port = 2222;
+  user = "user";
   categories = [
     "sonarr"
     "radarr"
   ];
 
-  # qBittorrent reports this path; the arrs' remote path mapping rewrites it
-  # to localDownloads. SFTP is chrooted *at* this directory, so the rclone
-  # remote sees it as its root and category folders sit directly beneath.
-  remoteDownloads = "/mnt/007/${user}/Downloads";
+  # qBittorrent reports paths under remoteDownloads; the arrs' remote path
+  # mapping rewrites them to localDownloads.
+  remoteDownloads = "/home/${user}/Downloads";
   localDownloads = "${mediaDir}/torrents/seedbox";
 
-  # rclone's SSH client may negotiate any of these; pin all three.
   knownHosts = pkgs.writeText "seedbox-known-hosts" ''
-    [${host}]:${toString port} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFu3F1tNRQJyNgU2EhTjVezyO4fSn8a37eOcVnquWInV
-    [${host}]:${toString port} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBM0dKY+FArQP0qDORbe0QiUzbPiufdToZSnHI2oWoJuRvHHfT308h8VGAnhOX/mA59yMwbgM5F8hUNwMUJpK/Sg=
-    [${host}]:${toString port} ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCefg/7hNpNwGqUeCA11rO0tKayjhdfx8U/lC7KOwO2rJ0xytnTU1KfxY973HbCeNKSDxCJXnvgqMO8W1HQtZ4e6DI/SHabxC3wi9bky5mwFcFeLVvU3Ik0qCTaTgx/eXX7s8TAab0WVHG9E9Bvic4oEiHk599QqCWisJq6e5t/E0g2Qv1snGoeWDDzHLOat86Hvv0ekKQfNbUYbL5/2BI0BYOnuU3Nx9RqwArArhwWDl02SIphOXRrFF9xGNJN8Befhb/ghhEfeLxu8+4JJ1o5AOr0hKbxxNf0ytWXr3dmgr2VWHMEnoLmRhwaT6Ozinjwytqpf2z/ahcx8TNxQuNazViP3cVYbN9ll3t+D0Ki51yTAcFoszX+t9iSnYSW4NIOFUi+U8GJjAWJyHWq52/XFqblNxsv+D2rsPss/0V8O/pWtB8tB11hB4aTrB3b61IIa+m6VImucXGTbpxELmwjFn0hF6E1Ym8Jgs6hUWlrYlFXwaZPPNdniFRLW46Vnws=
+    [${host}]:${toString port} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICGyojORtn3jyFM8BVS5LetP9pXYpaC0ULP7QYUMcy9/
   '';
 
-  # Everything but the password lives in a normal rclone config. rclone reads
-  # the password from RCLONE_CONFIG_SEEDBOX_PASS, which the unit derives from
-  # the systemd credential.
-  rcloneConfig = (pkgs.formats.ini { }).generate "rclone.conf" {
-    seedbox = {
-      type = "sftp";
-      inherit host port user;
-      known_hosts_file = knownHosts;
-      set_modtime = false;
-      # rclone probes these once and tries to write the result back into the
-      # config; the store is read-only, so state them up front.
-      md5sum_command = "none";
-      sha1sum_command = "none";
-    };
-  };
+  # The pull user's ed25519 key; its public half is in the seedbox user's
+  # authorized_keys.
+  keyFile = config.age.secrets.seedbox-ssh-key.path;
 
-  # `copy`, not `sync`: deleting a landed file at home must never delete it on
-  # the seedbox while it is still seeding. `--inplace=false` writes in-flight
-  # files under a temp name so the arrs never see a half-copied release;
-  # `--min-age` skips anything qBittorrent touched in the last minute.
+  # `--partial-dir` keeps in-flight files out of the arrs' sight until rsync
+  # renames them into place, and lets an interrupted pull resume. Nothing is
+  # ever deleted at the source: the seedbox keeps seeding.
   pull = pkgs.writeShellApplication {
     name = "seedbox-pull";
-    runtimeInputs = [ pkgs.rclone ];
+    runtimeInputs = [
+      pkgs.rsync
+      pkgs.openssh
+    ];
     text = ''
-      RCLONE_CONFIG_SEEDBOX_PASS=$(rclone obscure - < "$CREDENTIALS_DIRECTORY/password")
-      export RCLONE_CONFIG_SEEDBOX_PASS
+      ssh="ssh -i ${keyFile} -p ${toString port} -o UserKnownHostsFile=${knownHosts} -o StrictHostKeyChecking=yes -o BatchMode=yes"
       for cat in ${toString categories}; do
         # qBittorrent creates a category directory on its first download.
-        rclone lsd "seedbox:$cat" >/dev/null 2>&1 || continue
-        rclone copy --inplace=false --min-age 1m --transfers 4 --checkers 8 \
-          --multi-thread-streams 4 --multi-thread-cutoff 256M \
-          "seedbox:$cat" "${localDownloads}/$cat"
+        $ssh "${user}@${host}" test -d "${remoteDownloads}/$cat" || continue
+        rsync --archive --partial-dir=.rsync-partial \
+          --no-perms --no-owner --no-group --chmod=D2775,F664 \
+          --rsh="$ssh" "${user}@${host}:${remoteDownloads}/$cat/" "${localDownloads}/$cat/"
       done
     '';
   };
 in
 {
-  # A RapidSeedbox shared box, used for private-tracker torrents that need
-  # long seeding. Its qBittorrent is a second download client in Sonarr and
-  # Radarr (tagged `seedbox`, configured through their UIs); this module brings
-  # finished files home so the usual import path applies, via a remote path
-  # mapping of ${remoteDownloads} -> ${localDownloads}.
-  age.secrets.seedbox-password.file = ../../secrets/seedbox-password.age;
+  # A RapidSeedbox VPS, used for private-tracker torrents that need long
+  # seeding. Its qBittorrent is a second download client in Sonarr and Radarr
+  # (tagged `seedbox`, configured through their UIs) behind Apache basic auth
+  # at https://qb-45-136-230-38.a.seedbox.vip; this module brings finished
+  # files home so the usual import path applies, via a remote path mapping of
+  # ${remoteDownloads} -> ${localDownloads}.
+  age.secrets.seedbox-ssh-key = {
+    file = ../../secrets/seedbox-ssh-key.age;
+    owner = "seedbox-pull";
+    inherit group;
+  };
 
   users.users.seedbox-pull = {
     isSystemUser = true;
@@ -83,20 +73,12 @@ in
       description = "Pull completed seedbox downloads home";
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
-      environment = {
-        RCLONE_CONFIG = rcloneConfig;
-        RCLONE_CACHE_DIR = "/var/cache/seedbox-pull";
-      };
       serviceConfig = {
         Type = "oneshot";
         User = "seedbox-pull";
         Group = group;
         UMask = "0002";
-        CacheDirectory = "seedbox-pull";
-        LoadCredential = "password:${config.age.secrets.seedbox-password.path}";
         ExecStart = "${pull}/bin/seedbox-pull";
-        # rclone can sit in a blocked SFTP read on SIGTERM; killing it is safe
-        # because in-flight files are temp-named and resume on the next run.
         TimeoutStopSec = 30;
       };
     };
