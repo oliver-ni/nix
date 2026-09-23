@@ -1,7 +1,7 @@
 { config, ... }:
 
-# The admin UIs (Sonarr, Radarr, Prowlarr, qBittorrent) are reachable only
-# over the tailnet, on their plain ports.
+# The tailnet is trusted like the LAN. Admin UIs are reached through Caddy's
+# tailnet-only hostnames in proxy.nix; the services themselves bind loopback.
 {
   services.tailscale = {
     enable = true;

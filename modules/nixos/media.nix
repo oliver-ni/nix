@@ -34,6 +34,8 @@ let
   };
 in
 {
+  # The arrs and qBittorrent run without their own login, so they bind to
+  # loopback and are reached only through Caddy's tailnet-only hostnames.
   users = {
     groups.${group} = { };
     users.oliver.extraGroups = [ group ];
@@ -71,18 +73,27 @@ in
     sonarr = {
       inherit group;
       enable = true;
-      settings.auth.method = "External";
+      settings = {
+        auth.method = "External";
+        server.bindAddress = "127.0.0.1";
+      };
     };
 
     radarr = {
       inherit group;
       enable = true;
-      settings.auth.method = "External";
+      settings = {
+        auth.method = "External";
+        server.bindAddress = "127.0.0.1";
+      };
     };
 
     prowlarr = {
       enable = true;
-      settings.auth.method = "External";
+      settings = {
+        auth.method = "External";
+        server.bindAddress = "127.0.0.1";
+      };
     };
 
     qbittorrent = {
@@ -95,6 +106,7 @@ in
 
         Preferences = {
           Downloads.SavePath = "${mediaDir}/torrents";
+          WebUI.Address = "127.0.0.1";
           WebUI.LocalHostAuth = false;
         };
       };
