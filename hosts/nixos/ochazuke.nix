@@ -41,6 +41,11 @@
     ];
   };
 
+  # Tailscale SSH answers port 22 for tailnet peers; who may log in as whom is
+  # the tailnet policy's `ssh` section (ochazuke carries tag:server). LAN SSH
+  # still reaches sshd and the keys above.
+  services.tailscale.extraSetFlags = [ "--ssh" ];
+
   security.sudo.wheelNeedsPassword = false;
   home-manager.users.oliver = import ../../home/${"oliver@ochazuke"}.nix;
 
