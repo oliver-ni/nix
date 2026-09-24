@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   pickStream = pkgs.writers.writePython3Bin "lolesports-pick-stream" { flakeIgnore = [ "E501" ]; } (
@@ -48,6 +53,10 @@ in
     ];
     home = "/var/lib/kiosk";
     createHome = true;
+    # logind gives system users a session without a user manager; lingering
+    # runs user@kiosk anyway so pipewire's user units exist and
+    # switch-to-configuration's per-user activation has a bus to talk to.
+    linger = true;
   };
   users.groups.kiosk = { };
 
@@ -69,9 +78,11 @@ in
       TimeoutStopSec = 15;
     };
   };
-  # cage only Conflicts= with getty@tty1; if getty is still wanted it wins the
-  # race on activation and stops cage. Keep the console on tty2+.
-  systemd.services."getty@tty1".enable = false;
+  # Without a display manager the getty module makes getty.target want
+  # autovt@tty1, which every switch-to-configuration starts; cage's Conflicts=
+  # then stops cage instead. Drop the want (as display managers do) and keep
+  # the console on tty2+.
+  systemd.targets.getty.wants = lib.mkForce [ ];
 
   security.rtkit.enable = true;
   services.pipewire = {
