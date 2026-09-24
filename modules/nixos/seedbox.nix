@@ -36,11 +36,11 @@ let
 in
 {
   # A Whatbox slot, used for private-tracker torrents that need long seeding.
-  # Its qBittorrent is a second download client in Sonarr and Radarr (tagged
-  # `seedbox`, configured through their UIs) behind the slot's basic-auth
-  # proxy at https://qbittorrent.freedgiraffe.box.ca; this module brings
-  # finished files home so the usual import path applies, via a remote path
-  # mapping of ${remoteDownloads} -> ${localDownloads}.
+  # Its qBittorrent is the only download client in Sonarr and Radarr
+  # (configured through their UIs) behind the slot's basic-auth proxy at
+  # https://qbittorrent.freedgiraffe.box.ca; this module brings finished
+  # files home so the usual import path applies, via a remote path mapping
+  # of ${remoteDownloads} -> ${localDownloads}.
   age.secrets = {
     seedbox-ssh-key = {
       file = ../../secrets/seedbox-ssh-key.age;
@@ -58,7 +58,13 @@ in
   };
 
   systemd = {
-    tmpfiles.rules = [ "d ${localDownloads} 2775 root ${group} -" ];
+    # rclone sets the modtime of every directory it copies into, which only
+    # the owner may do.
+    tmpfiles.rules = map (d: "d ${localDownloads}${d} 2775 seedbox-pull ${group} -") [
+      ""
+      "/sonarr"
+      "/radarr"
+    ];
 
     # `copy`, not `sync`: deleting a landed file at home must never delete it
     # on the seedbox while it is still seeding. `--inplace=false` writes
@@ -69,9 +75,9 @@ in
     # comparison that neither re-copies nor hashes. It also makes a copy of an
     # unfinished file permanent, and qBittorrent's files have their final size
     # from the first piece on, so `--min-age` alone is not enough. The slot's
-    # qBittorrent appends `.!qB` to incomplete files (a WebUI setting, not
-    # Nix) and renames each one when it completes; excluding them is what
-    # makes "completed" true.
+    # qBittorrent appends `.!qB` to incomplete files (asserted by the ratio
+    # grab below) and renames each one when it completes; excluding them is
+    # what makes "completed" true.
     services.seedbox-pull = {
       description = "Pull completed seedbox downloads home";
       after = [ "network-online.target" ];
@@ -135,11 +141,20 @@ in
         MAX_SIZE_GB = "100";
         MAX_TOTAL_GB = "300";
         MAX_DOWNLOAD_FACTOR = "0";
+        # Slot-wide qBittorrent settings the rest of this module relies on,
+        # asserted on every run so a WebUI change cannot silently undo them.
         # Fresh swarms are one slow uploader and a dozen leechers all at the
         # same progress; upload is re-serving pieces to as many of them as
-        # possible, so the client's default 4 slots/torrent is the cap.
-        UPLOAD_SLOTS = "200";
-        UPLOAD_SLOTS_PER_TORRENT = "50";
+        # possible, so the default 4 upload slots/torrent is the cap. The
+        # pull depends on incomplete files carrying `.!qB`; queueing would
+        # leave grabbed torrents idle, and AvistaZ counts bonus only for
+        # active ones.
+        QBITTORRENT_PREFERENCES = builtins.toJSON {
+          max_uploads = 200;
+          max_uploads_per_torrent = 50;
+          incomplete_files_ext = true;
+          queueing_enabled = false;
+        };
       };
       serviceConfig = {
         Type = "oneshot";
