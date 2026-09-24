@@ -13,4 +13,5 @@ in
   "cloudflare-api-token.age".publicKeys = keys;
   "jfa-go-config.age".publicKeys = keys;
   "seedbox-ssh-key.age".publicKeys = keys;
+  "seedbox-qbittorrent-auth.age".publicKeys = keys;
 }

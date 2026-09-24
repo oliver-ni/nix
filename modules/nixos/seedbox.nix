@@ -9,6 +9,7 @@ let
   # mapping rewrites them to localDownloads.
   remoteDownloads = "/home/${user}/files";
   localDownloads = "/zfs78/media/torrents/seedbox";
+  qbittorrent = "https://qbittorrent.freedgiraffe.box.ca";
 
   # Published on the Whatbox slot page.
   knownHosts = pkgs.writeText "seedbox-known-hosts" ''
@@ -27,6 +28,11 @@ let
       disable_hashcheck = true;
     };
   };
+
+  ratioGrab = pkgs.writers.writePython3Bin "seedbox-ratio-grab" {
+    libraries = [ pkgs.python3Packages.requests ];
+    flakeIgnore = [ "E501" ];
+  } (builtins.readFile ./seedbox/ratio-grab.py);
 in
 {
   # A Whatbox slot, used for private-tracker torrents that need long seeding.
@@ -35,10 +41,15 @@ in
   # proxy at https://qbittorrent.freedgiraffe.box.ca; this module brings
   # finished files home so the usual import path applies, via a remote path
   # mapping of ${remoteDownloads} -> ${localDownloads}.
-  age.secrets.seedbox-ssh-key = {
-    file = ../../secrets/seedbox-ssh-key.age;
-    owner = "seedbox-pull";
-    inherit group;
+  age.secrets = {
+    seedbox-ssh-key = {
+      file = ../../secrets/seedbox-ssh-key.age;
+      owner = "seedbox-pull";
+      inherit group;
+    };
+
+    # `user:password` for the slot's basic-auth proxy in front of qBittorrent.
+    seedbox-qbittorrent-auth.file = ../../secrets/seedbox-qbittorrent-auth.age;
   };
 
   users.users.seedbox-pull = {
@@ -92,6 +103,61 @@ in
         OnBootSec = "2m";
         OnUnitInactiveSec = "3m";
         RandomizedDelaySec = "30s";
+      };
+    };
+
+    # AvistaZ upload comes from seeding fresh releases while they still have
+    # leechers, and freeleech ones cost no ratio to fetch. New releases are
+    # found through Prowlarr's AvistaZ indexer (it holds the tracker login)
+    # and added to the slot under the `ratio` category, which the pull never
+    # brings home. Each torrent stops after SEED_MINUTES and is then deleted
+    # from the slot; 14 days clears AvistaZ's hit-and-run rule (72 h + 2 h/GB)
+    # for anything up to MAX_SIZE_GB. MAX_TOTAL_GB bounds the slot disk the
+    # category may hold at once.
+    services.seedbox-ratio-grab = {
+      description = "Grab discounted AvistaZ releases on the seedbox for ratio";
+      after = [
+        "network-online.target"
+        "prowlarr.service"
+      ];
+      wants = [ "network-online.target" ];
+      environment = {
+        PROWLARR_URL = "http://localhost:9696";
+        PROWLARR_INDEXER_ID = "2";
+        QBITTORRENT_URL = qbittorrent;
+        CATEGORY = "ratio";
+        SAVE_PATH = "${remoteDownloads}/ratio";
+        SEED_MINUTES = "20160";
+        MAX_AGE_HOURS = "12";
+        MAX_SIZE_GB = "100";
+        MAX_TOTAL_GB = "300";
+        MAX_DOWNLOAD_FACTOR = "0";
+        # Fresh swarms are one slow uploader and a dozen leechers all at the
+        # same progress; upload is re-serving pieces to as many of them as
+        # possible, so the client's default 4 slots/torrent is the cap.
+        UPLOAD_SLOTS = "200";
+        UPLOAD_SLOTS_PER_TORRENT = "50";
+      };
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${ratioGrab}/bin/seedbox-ratio-grab";
+        DynamicUser = true;
+        StateDirectory = "seedbox-ratio-grab";
+        LoadCredential = [
+          "qbittorrent-auth:${config.age.secrets.seedbox-qbittorrent-auth.path}"
+          "prowlarr-api-key:${config.age.secrets.prowlarr-api-key.path}"
+        ];
+      };
+    };
+
+    timers.seedbox-ratio-grab = {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        # AvistaZ has no IRC announces, so being an early seeder means
+        # polling. The site has blocked API clients for overload before
+        # (RSS is what it sanctions for automation), so keep this modest.
+        OnBootSec = "5m";
+        OnUnitInactiveSec = "10m";
       };
     };
   };
