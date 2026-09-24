@@ -52,11 +52,15 @@ in
     # `copy`, not `sync`: deleting a landed file at home must never delete it
     # on the seedbox while it is still seeding. `--inplace=false` writes
     # in-flight files under a temp name so the arrs never see a half-copied
-    # release; `--min-age` skips anything qBittorrent touched in the last
-    # minute. Only the arr categories come home; the slot's other folders stay.
+    # release. Only the arr categories come home; the slot's other folders stay.
     # `--size-only`: finished torrent files never change, and modtimes of
     # already-landed copies do not match the slot's, so size is the only
-    # comparison that neither re-copies nor hashes.
+    # comparison that neither re-copies nor hashes. It also makes a copy of an
+    # unfinished file permanent, and qBittorrent's files have their final size
+    # from the first piece on, so `--min-age` alone is not enough. The slot's
+    # qBittorrent appends `.!qB` to incomplete files (a WebUI setting, not
+    # Nix) and renames each one when it completes; excluding them is what
+    # makes "completed" true.
     services.seedbox-pull = {
       description = "Pull completed seedbox downloads home";
       after = [ "network-online.target" ];
@@ -68,7 +72,7 @@ in
       };
       script = ''
         rclone copy --inplace=false --size-only --min-age 1m --transfers 8 --multi-thread-streams 4 \
-          --include '/{sonarr,radarr}/**' "seedbox:${remoteDownloads}" "${localDownloads}"
+          --exclude '*.!qB' --include '/{sonarr,radarr}/**' "seedbox:${remoteDownloads}" "${localDownloads}"
       '';
       serviceConfig = {
         Type = "oneshot";
