@@ -113,8 +113,11 @@ def grab(release):
         {"category": CATEGORY, "autoTMM": "true"},
         files={"torrents": ("release.torrent", torrent.content)},
     )
-    if r.text.strip() != "Ok.":
-        raise RuntimeError(f"torrents/add returned {r.text.strip()!r}")
+    # qBittorrent 5.2+ answers with JSON counts, older versions with "Ok."/"Fails."
+    body = r.text.strip()
+    added = body == "Ok." or (body.startswith("{") and r.json()["success_count"] > 0)
+    if not added:
+        raise RuntimeError(f"torrents/add returned {body!r}")
 
 
 def save_state(seen):
