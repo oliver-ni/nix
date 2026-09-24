@@ -1,10 +1,10 @@
 """Grab fresh discounted AvistaZ releases onto the seedbox slot for ratio.
 
 One run: delete torrents in the ratio category that have seeded long enough
-and are not among the last seeders, then ask Prowlarr for the newest
-releases and add the ones worth seeding. Each grab is independent; a failure
-is logged and the run moves on. Info hashes already handled are kept in
-STATE_DIRECTORY so a deleted or skipped torrent is not considered again.
+or uploaded enough and are not among the last seeders, then ask Prowlarr for
+the newest releases and add the ones worth seeding. Each grab is independent;
+a failure is logged and the run moves on. Info hashes already handled are kept
+in STATE_DIRECTORY so a deleted or skipped torrent is not considered again.
 """
 
 import json
@@ -26,6 +26,7 @@ QBITTORRENT_PREFERENCES = json.loads(env["QBITTORRENT_PREFERENCES"])
 CATEGORY = env["CATEGORY"]
 SAVE_PATH = env["SAVE_PATH"]
 SEED_TIME = timedelta(minutes=int(env["SEED_MINUTES"]))
+DONE_RATIO = float(env["DONE_RATIO"])
 MIN_OTHER_SEEDERS = int(env["MIN_OTHER_SEEDERS"])
 MAX_AGE = timedelta(hours=float(env["MAX_AGE_HOURS"]))
 MAX_SIZE = float(env["MAX_SIZE_GB"]) * GB
@@ -74,19 +75,21 @@ def ensure_preferences():
 
 
 def cleanup(torrents):
-    """Delete finished torrents that have seeded long enough, unless they are
-    among the last seeders. Returns the torrents that remain."""
+    """Delete finished torrents that have seeded long enough or uploaded
+    enough, unless they are among the last seeders. Returns the torrents
+    that remain."""
     remaining = []
     for t in torrents:
         # num_complete is the tracker's seed count, including us.
         others = t["num_complete"] - 1
-        if t["progress"] < 1 or t["seeding_time"] < SEED_TIME.total_seconds():
+        done = t["seeding_time"] >= SEED_TIME.total_seconds() or t["ratio"] >= DONE_RATIO
+        if t["progress"] < 1 or not done:
             remaining.append(t)
         elif others < MIN_OTHER_SEEDERS:
             log(f"keeping, only {others} other seeders: {t['name']}")
             remaining.append(t)
         else:
-            log(f"done seeding {t['seeding_time'] // 86400}d, ratio {t['ratio']:.2f}: {t['name']}")
+            log(f"done seeding {t['seeding_time'] / 86400:.1f}d, ratio {t['ratio']:.2f}: {t['name']}")
             qb_post("torrents/delete", {"hashes": t["hash"], "deleteFiles": "true"})
     return remaining
 

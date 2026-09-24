@@ -123,12 +123,15 @@ in
     # leechers, and freeleech ones cost no ratio to fetch. New releases are
     # found through Prowlarr's AvistaZ indexer (it holds the tracker login)
     # and added to the slot under the `ratio` category, which the pull never
-    # brings home. A torrent is deleted from the slot once it has seeded for
-    # SEED_MINUTES; 14 days clears AvistaZ's hit-and-run rule (72 h + 2 h/GB)
-    # for anything up to MAX_SIZE_GB. The site also frowns on leaving
-    # low-seeded torrents, so one with fewer than MIN_OTHER_SEEDERS stays
-    # until more show up. MAX_TOTAL_GB bounds the slot disk the category may
-    # hold at once.
+    # brings home. Nearly all upload happens in a release's first hours, so
+    # only releases up to MAX_AGE_HOURS old are taken (the timer sees them
+    # within 10 min; the window only matters after downtime). A torrent is
+    # deleted from the slot once it has seeded for SEED_MINUTES or reached
+    # DONE_RATIO, either of which clears AvistaZ's hit-and-run rule (ratio
+    # 0.9, or 72 h + 2 h/GB for anything up to MAX_SIZE_GB). The site also
+    # frowns on leaving low-seeded torrents, so one with fewer than
+    # MIN_OTHER_SEEDERS stays until more show up. MAX_TOTAL_GB bounds the slot
+    # disk the category may hold at once.
     services.seedbox-ratio-grab = {
       description = "Grab discounted AvistaZ releases on the seedbox for ratio";
       restartIfChanged = false;
@@ -144,8 +147,9 @@ in
         CATEGORY = "ratio";
         SAVE_PATH = "${remoteDownloads}/ratio";
         SEED_MINUTES = "20160";
+        DONE_RATIO = "1.0";
         MIN_OTHER_SEEDERS = "3";
-        MAX_AGE_HOURS = "12";
+        MAX_AGE_HOURS = "2";
         MAX_SIZE_GB = "100";
         MAX_TOTAL_GB = "300";
         MAX_DOWNLOAD_FACTOR = "0";
