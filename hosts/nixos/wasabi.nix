@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   imports = [
@@ -21,20 +21,8 @@
   # without it the console stays on the firmware framebuffer.
   boot.blacklistedKernelModules = [ "nouveau" ];
 
-  # Quick tunnel for remote SSH; its hostname changes on every start and is
-  # printed to the console.
-  systemd.services.cloudflared-ssh = {
-    wantedBy = [ "multi-user.target" ];
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" ];
-
-    serviceConfig = {
-      ExecStart = "${lib.getExe pkgs.cloudflared} tunnel --no-autoupdate --url ssh://localhost:22";
-      DynamicUser = true;
-      Restart = "on-failure";
-      StandardError = "journal+console";
-    };
-  };
+  # One-time join key, placed by hand at install; unused once the node has state.
+  services.tailscale.authKeyFile = "/var/lib/tailscale/auth-key";
 
   users.users.oliver = {
     isNormalUser = true;
