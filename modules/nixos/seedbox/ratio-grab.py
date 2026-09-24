@@ -1,34 +1,26 @@
 """Grab fresh discounted AvistaZ releases onto the seedbox slot for ratio.
 
 One run: find new releases through Prowlarr, add the ones worth seeding to
-qBittorrent under the ratio category with a per-torrent seeding-time limit,
-and delete torrents that have reached it. Nothing in the category is ever
-pulled home.
+qBittorrent under the ratio category, and delete torrents that have seeded
+long enough and are not the last seeders left. Nothing in the category is
+ever pulled home.
+
+Each grab is independent: a failure is logged and the run moves on. The set
+of info hashes already handled is kept in STATE_DIRECTORY so a torrent that
+was deleted, or skipped for size, is not considered again.
 """
 
 import json
 import os
 import sys
-from datetime import datetime, timezone
+import tempfile
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
-
-PROWLARR_URL = os.environ["PROWLARR_URL"]
-PROWLARR_INDEXER_ID = os.environ["PROWLARR_INDEXER_ID"]
-QBITTORRENT_URL = os.environ["QBITTORRENT_URL"]
-CATEGORY = os.environ["CATEGORY"]
-SAVE_PATH = os.environ["SAVE_PATH"]
-SEED_MINUTES = int(os.environ["SEED_MINUTES"])
-MAX_AGE_HOURS = float(os.environ["MAX_AGE_HOURS"])
-MAX_SIZE_GB = float(os.environ["MAX_SIZE_GB"])
-MAX_TOTAL_GB = float(os.environ["MAX_TOTAL_GB"])
-MAX_DOWNLOAD_FACTOR = float(os.environ["MAX_DOWNLOAD_FACTOR"])
-UPLOAD_SLOTS = int(os.environ["UPLOAD_SLOTS"])
-UPLOAD_SLOTS_PER_TORRENT = int(os.environ["UPLOAD_SLOTS_PER_TORRENT"])
-
-CREDENTIALS = Path(os.environ["CREDENTIALS_DIRECTORY"])
-STATE = Path(os.environ["STATE_DIRECTORY"]) / "grabbed.json"
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 GB = 1e9
 
@@ -40,34 +32,145 @@ DOWNLOAD_FACTOR = {
     "freeleech25": 0.75,
 }
 
-qb = requests.Session()
-qb.auth = tuple(
-    (CREDENTIALS / "qbittorrent-auth").read_text().strip().split(":", 1)
-)
 
-prowlarr = requests.Session()
-prowlarr.headers["X-Api-Key"] = (
-    (CREDENTIALS / "prowlarr-api-key").read_text().strip()
-)
+@dataclass(frozen=True)
+class Config:
+    prowlarr_url: str
+    prowlarr_indexer_id: str
+    qbittorrent_url: str
+    category: str
+    save_path: str
+    seed_time: timedelta
+    min_other_seeders: int
+    max_age: timedelta
+    max_size: float
+    max_total: float
+    max_download_factor: float
+    upload_slots: int
+    upload_slots_per_torrent: int
+    credentials: Path
+    state: Path
+
+    @classmethod
+    def from_env(cls, env=os.environ):
+        return cls(
+            prowlarr_url=env["PROWLARR_URL"],
+            prowlarr_indexer_id=env["PROWLARR_INDEXER_ID"],
+            qbittorrent_url=env["QBITTORRENT_URL"],
+            category=env["CATEGORY"],
+            save_path=env["SAVE_PATH"],
+            seed_time=timedelta(minutes=int(env["SEED_MINUTES"])),
+            min_other_seeders=int(env["MIN_OTHER_SEEDERS"]),
+            max_age=timedelta(hours=float(env["MAX_AGE_HOURS"])),
+            max_size=float(env["MAX_SIZE_GB"]) * GB,
+            max_total=float(env["MAX_TOTAL_GB"]) * GB,
+            max_download_factor=float(env["MAX_DOWNLOAD_FACTOR"]),
+            upload_slots=int(env["UPLOAD_SLOTS"]),
+            upload_slots_per_torrent=int(env["UPLOAD_SLOTS_PER_TORRENT"]),
+            credentials=Path(env["CREDENTIALS_DIRECTORY"]),
+            state=Path(env["STATE_DIRECTORY"]) / "grabbed.json",
+        )
 
 
 def log(*args):
     print(*args, file=sys.stderr, flush=True)
 
 
-def qb_get(path, **params):
-    r = qb.get(f"{QBITTORRENT_URL}/api/v2/{path}", params=params, timeout=60)
-    r.raise_for_status()
-    return r
-
-
-def qb_post(path, data=None, files=None, ok=()):
-    r = qb.post(
-        f"{QBITTORRENT_URL}/api/v2/{path}", data=data, files=files, timeout=300
+def session(retries=3):
+    s = requests.Session()
+    retry = Retry(
+        total=retries,
+        backoff_factor=1,
+        status_forcelist=(502, 503, 504),
+        allowed_methods=("GET", "POST"),
     )
-    if r.status_code not in ok:
+    s.mount("http://", HTTPAdapter(max_retries=retry))
+    s.mount("https://", HTTPAdapter(max_retries=retry))
+    return s
+
+
+class QBittorrent:
+    def __init__(self, url, auth):
+        self.url = url
+        self.session = session()
+        self.session.auth = auth
+
+    def get(self, path, **params):
+        r = self.session.get(f"{self.url}/api/v2/{path}", params=params, timeout=60)
         r.raise_for_status()
-    return r
+        return r.json()
+
+    def post(self, path, data=None, files=None, ok=()):
+        r = self.session.post(
+            f"{self.url}/api/v2/{path}", data=data, files=files, timeout=300
+        )
+        if r.status_code not in ok:
+            r.raise_for_status()
+        return r
+
+    def ensure_preferences(self, wanted):
+        current = self.get("app/preferences")
+        changed = {k: v for k, v in wanted.items() if current.get(k) != v}
+        if changed:
+            log(f"setting preferences {changed}")
+            self.post("app/setPreferences", {"json": json.dumps(changed)})
+
+    def ensure_category(self, name, save_path):
+        # 409: already exists.
+        self.post(
+            "torrents/createCategory",
+            {"category": name, "savePath": save_path},
+            ok=(409,),
+        )
+
+    def torrents(self):
+        return self.get("torrents/info")
+
+    def add(self, category, torrent_file):
+        r = self.post(
+            "torrents/add",
+            {"category": category, "autoTMM": "true"},
+            files={"torrents": ("release.torrent", torrent_file)},
+        )
+        if r.text.strip() != "Ok.":
+            raise RuntimeError(f"torrents/add returned {r.text.strip()!r}")
+
+    def delete(self, info_hash):
+        self.post("torrents/delete", {"hashes": info_hash, "deleteFiles": "true"})
+
+
+class Prowlarr:
+    def __init__(self, url, api_key):
+        self.url = url
+        self.session = session()
+        self.session.headers["X-Api-Key"] = api_key
+
+    def latest(self, indexer_id, limit=50):
+        r = self.session.get(
+            f"{self.url}/api/v1/search",
+            params={"indexerIds": indexer_id, "type": "search", "limit": limit},
+            timeout=120,
+        )
+        r.raise_for_status()
+        return r.json()
+
+    def download(self, release):
+        # The URL carries the API key; never log it.
+        r = self.session.get(release["downloadUrl"], timeout=120)
+        r.raise_for_status()
+        return r.content
+
+
+class State:
+    def __init__(self, path):
+        self.path = path
+        self.seen = set(json.loads(path.read_text())) if path.exists() else set()
+
+    def save(self):
+        fd, tmp = tempfile.mkstemp(dir=self.path.parent, prefix=".grabbed-")
+        with os.fdopen(fd, "w") as f:
+            json.dump(sorted(self.seen), f)
+        os.replace(tmp, self.path)
 
 
 def download_factor(release):
@@ -76,100 +179,106 @@ def download_factor(release):
     return min(factors) if factors else 1.0
 
 
-def cleanup(torrents):
+def describe(release, age, factor):
+    return (
+        f"{release['size'] / GB:.1f} GB, {age.total_seconds() / 3600:.1f}h old, "
+        f"x{factor:g} download, S{release.get('seeders', '?')}/L{release.get('leechers', '?')}: "
+        f"{release['title']}"
+    )
+
+
+def cleanup(qb, cfg, torrents):
+    """Delete finished torrents that have seeded long enough and are not
+    among the last seeders. The tracker's seed count includes us."""
     for t in torrents:
-        if t["state"] not in ("stoppedUP", "pausedUP"):
+        if t["progress"] < 1 or t["seeding_time"] < cfg.seed_time.total_seconds():
             continue
-        if t["seeding_time"] < SEED_MINUTES * 60:
+        others = t["num_complete"] - 1
+        if others < cfg.min_other_seeders:
+            log(f"keeping, only {others} other seeders: {t['name']}")
+            continue
+        try:
+            qb.delete(t["hash"])
+        except requests.RequestException as e:
+            log(f"delete failed ({e}): {t['name']}")
             continue
         log(f"done seeding {t['seeding_time'] // 86400}d, ratio {t['ratio']:.2f}: {t['name']}")
-        qb_post("torrents/delete", {"hashes": t["hash"], "deleteFiles": "true"})
 
 
-def ensure_preferences():
-    wanted = {
-        "max_uploads": UPLOAD_SLOTS,
-        "max_uploads_per_torrent": UPLOAD_SLOTS_PER_TORRENT,
-    }
-    current = qb_get("app/preferences").json()
-    changed = {k: v for k, v in wanted.items() if current.get(k) != v}
-    if changed:
-        log(f"setting preferences {changed}")
-        qb_post("app/setPreferences", {"json": json.dumps(changed)})
+def choose(cfg, releases, in_client, seen, total, now):
+    """Yield (release, age, factor) worth grabbing, newest first, keeping a
+    running total so the category stays under max_total."""
+    releases = sorted(releases, key=lambda r: r["publishDate"], reverse=True)
+    for release in releases:
+        info_hash = (release.get("infoHash") or "").lower()
+        if not info_hash or info_hash in in_client or info_hash in seen:
+            continue
+
+        published = datetime.fromisoformat(release["publishDate"].replace("Z", "+00:00"))
+        age = now - published
+        factor = download_factor(release)
+        size = release.get("size") or 0
+        if factor > cfg.max_download_factor or age > cfg.max_age:
+            continue
+        if size > cfg.max_size:
+            log(f"skip, over size cap: {describe(release, age, factor)}")
+            seen.add(info_hash)
+            continue
+        if total + size > cfg.max_total:
+            log(f"skip, category at {total / GB:.0f} GB: {release['title']}")
+            continue
+
+        total += size
+        yield info_hash, release, age, factor
 
 
 def main():
-    seen = set(json.loads(STATE.read_text())) if STATE.exists() else set()
+    cfg = Config.from_env()
+    qb = QBittorrent(
+        cfg.qbittorrent_url,
+        tuple((cfg.credentials / "qbittorrent-auth").read_text().strip().split(":", 1)),
+    )
+    prowlarr = Prowlarr(
+        cfg.prowlarr_url, (cfg.credentials / "prowlarr-api-key").read_text().strip()
+    )
+    state = State(cfg.state)
 
-    ensure_preferences()
-
+    qb.ensure_preferences(
+        {
+            "max_uploads": cfg.upload_slots,
+            "max_uploads_per_torrent": cfg.upload_slots_per_torrent,
+        }
+    )
     # AutoTMM puts the category under the slot's files/ tree, beside the arr
     # categories; the pull only includes those two.
-    qb_post(
-        "torrents/createCategory",
-        {"category": CATEGORY, "savePath": SAVE_PATH},
-        ok=(409,),
-    )
+    qb.ensure_category(cfg.category, cfg.save_path)
 
-    all_torrents = qb_get("torrents/info").json()
+    all_torrents = qb.torrents()
     in_client = {t["hash"].lower() for t in all_torrents}
-    ours = [t for t in all_torrents if t["category"] == CATEGORY]
-    cleanup(ours)
-    total = sum(t["size"] for t in ours if t["state"] not in ("stoppedUP", "pausedUP"))
+    ours = [t for t in all_torrents if t["category"] == cfg.category]
+    cleanup(qb, cfg, ours)
+    total = sum(t["size"] for t in ours)
 
-    r = prowlarr.get(
-        f"{PROWLARR_URL}/api/v1/search",
-        params={"indexerIds": PROWLARR_INDEXER_ID, "type": "search", "limit": 50},
-        timeout=120,
-    )
-    r.raise_for_status()
-    releases = sorted(r.json(), key=lambda x: x["publishDate"], reverse=True)
-
+    releases = prowlarr.latest(cfg.prowlarr_indexer_id)
     now = datetime.now(timezone.utc)
-    for release in releases:
-        info_hash = (release.get("infoHash") or "").lower()
-        published = datetime.fromisoformat(release["publishDate"].replace("Z", "+00:00"))
-        age_hours = (now - published).total_seconds() / 3600
-        factor = download_factor(release)
-        title = release["title"]
+    failures = 0
+    try:
+        for info_hash, release, age, factor in choose(
+            cfg, releases, in_client, state.seen, total, now
+        ):
+            try:
+                qb.add(cfg.category, prowlarr.download(release))
+            except (requests.RequestException, RuntimeError) as e:
+                failures += 1
+                log(f"grab failed ({e}): {release['title']}")
+                continue
+            state.seen.add(info_hash)
+            log(f"grabbed {describe(release, age, factor)}")
+    finally:
+        state.save()
 
-        if not info_hash or info_hash in in_client or info_hash in seen:
-            continue
-        if factor > MAX_DOWNLOAD_FACTOR or age_hours > MAX_AGE_HOURS:
-            continue
-        if release["size"] > MAX_SIZE_GB * GB:
-            log(f"skip {release['size'] / GB:.0f} GB: {title}")
-            seen.add(info_hash)
-            continue
-        if total + release["size"] > MAX_TOTAL_GB * GB:
-            log(f"skip, category at {total / GB:.0f} GB: {title}")
-            continue
-
-        torrent = prowlarr.get(release["downloadUrl"], timeout=120)
-        torrent.raise_for_status()
-        qb_post(
-            "torrents/add",
-            {"category": CATEGORY, "autoTMM": "true"},
-            files={"torrents": (f"{info_hash}.torrent", torrent.content)},
-        )
-        qb_post(
-            "torrents/setShareLimits",
-            {
-                "hashes": info_hash,
-                "ratioLimit": -1,
-                "seedingTimeLimit": SEED_MINUTES,
-                "inactiveSeedingTimeLimit": -1,
-                "shareLimitAction": "Stop",
-            },
-        )
-        seen.add(info_hash)
-        total += release["size"]
-        log(
-            f"grabbed {release['size'] / GB:.1f} GB, {age_hours:.1f}h old, "
-            f"x{factor:g} download, S{release['seeders']}/L{release['leechers']}: {title}"
-        )
-
-    STATE.write_text(json.dumps(sorted(seen)))
+    if failures:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
