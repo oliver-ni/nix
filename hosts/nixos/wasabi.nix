@@ -21,9 +21,6 @@
   # without it the console stays on the firmware framebuffer.
   boot.blacklistedKernelModules = [ "nouveau" ];
 
-  # One-time join key, placed by hand at install; unused once the node has state.
-  services.tailscale.authKeyFile = "/var/lib/tailscale/auth-key";
-
   users.users.oliver = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
