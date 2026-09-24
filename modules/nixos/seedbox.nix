@@ -125,7 +125,8 @@ in
     # and added to the slot under the `ratio` category, which the pull never
     # brings home. Nearly all upload happens in a release's first hours, so
     # only releases up to MAX_AGE_HOURS old are taken (the timer sees them
-    # within 10 min; the window only matters after downtime). A torrent is
+    # within 10 min; the window only matters after downtime), and none whose
+    # swarm already has more seeders than leechers. A torrent is
     # deleted from the slot once it has seeded for SEED_MINUTES or reached
     # DONE_RATIO, either of which clears AvistaZ's hit-and-run rule (ratio
     # 0.9, or 72 h + 2 h/GB for anything up to MAX_SIZE_GB). The site also
