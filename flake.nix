@@ -98,7 +98,10 @@
     {
       formatter = forAllSystems (pkgs: pkgs.nixfmt-tree);
 
-      nixosConfigurations.ochazuke = nixosSystem "x86_64-linux" ./hosts/nixos/ochazuke.nix;
+      nixosConfigurations = {
+        ochazuke = nixosSystem "x86_64-linux" ./hosts/nixos/ochazuke.nix;
+        wasabi = nixosSystem "x86_64-linux" ./hosts/nixos/wasabi.nix;
+      };
 
       darwinConfigurations = {
         onigiri = darwinSystem ./hosts/darwin/onigiri.nix;
