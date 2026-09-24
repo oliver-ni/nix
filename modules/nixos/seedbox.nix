@@ -131,7 +131,9 @@ in
     # DONE_RATIO, either of which clears AvistaZ's hit-and-run rule (ratio
     # 0.9, or 72 h + 2 h/GB for anything up to MAX_SIZE_GB). The site also
     # frowns on leaving low-seeded torrents, so one with fewer than
-    # MIN_OTHER_SEEDERS stays until more show up. MAX_TOTAL_GB bounds the slot
+    # MIN_OTHER_SEEDERS stays until more show up. A download still under 10%
+    # with no transfer for STALL_HOURS (the uploader never showed) is dropped,
+    # which AvistaZ allows without a hit-and-run. MAX_TOTAL_GB bounds the slot
     # disk the category may hold at once; the slot is 3.9 TB, shared with the
     # sonarr/radarr categories.
     services.seedbox-ratio-grab = {
@@ -155,6 +157,7 @@ in
         MAX_SIZE_GB = "100";
         MAX_TOTAL_GB = "1500";
         MAX_DOWNLOAD_FACTOR = "0";
+        STALL_HOURS = "1";
         # Slot-wide qBittorrent settings the rest of this module relies on,
         # asserted on every run so a WebUI change cannot silently undo them.
         # Fresh swarms are one slow uploader and a dozen leechers all at the
