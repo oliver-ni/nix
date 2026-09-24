@@ -68,10 +68,12 @@ in
       "/radarr"
     ];
 
-    # `copy`, not `sync`: deleting a landed file at home must never delete it
-    # on the seedbox while it is still seeding. `--inplace=false` writes
-    # in-flight files under a temp name so the arrs never see a half-copied
-    # release. Only the arr categories come home; the slot's other folders stay.
+    # `sync` makes home mirror the slot's arr folders: once the arrs import a
+    # torrent and remove it from the slot, its download copy disappears here
+    # too (library imports are hardlinks, so nothing is lost). It only ever
+    # writes at home; the slot is read. `--inplace=false` writes in-flight
+    # files under a temp name so the arrs never see a half-copied release.
+    # Only the arr categories come home; the slot's other folders stay.
     # `--size-only`: finished torrent files never change, and modtimes of
     # already-landed copies do not match the slot's, so size is the only
     # comparison that neither re-copies nor hashes. It also makes a copy of an
@@ -84,12 +86,15 @@ in
       description = "Pull completed seedbox downloads home";
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
+      # A pull can run for hours; a switch that waited on it would block. The
+      # timer picks up the new unit on its next run.
+      restartIfChanged = false;
       path = [ pkgs.rclone ];
       environment = rcloneRemote // {
         RCLONE_CACHE_DIR = "/var/cache/seedbox-pull";
       };
       script = ''
-        rclone copy --inplace=false --size-only --min-age 1m --transfers 8 --multi-thread-streams 4 \
+        rclone sync --inplace=false --size-only --min-age 1m --transfers 8 --multi-thread-streams 4 \
           --filter '- *.!qB' --filter '+ /{sonarr,radarr}/**' --filter '- *' \
           "seedbox:${remoteDownloads}" "${localDownloads}"
       '';
@@ -126,6 +131,7 @@ in
     # hold at once.
     services.seedbox-ratio-grab = {
       description = "Grab discounted AvistaZ releases on the seedbox for ratio";
+      restartIfChanged = false;
       after = [
         "network-online.target"
         "prowlarr.service"
