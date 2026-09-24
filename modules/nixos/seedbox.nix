@@ -16,17 +16,19 @@ let
     ${host} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHamrqU5kddKcyoORK1/W0iKqlawEMHn1Q0zo8fgKWxE
   '';
 
-  rcloneConfig = (pkgs.formats.ini { }).generate "rclone.conf" {
-    seedbox = {
-      type = "sftp";
-      inherit host user;
-      key_file = config.age.secrets.seedbox-ssh-key.path;
-      known_hosts_file = knownHosts;
-      host_key_algorithms = "ssh-ed25519";
-      # Never run md5sum on the slot: the shared HDD is what qBittorrent is
-      # writing to.
-      disable_hashcheck = true;
-    };
+  # The remote is defined through the environment rather than a config file:
+  # rclone rewrites its config file on every run, which a store path cannot be.
+  rcloneRemote = {
+    RCLONE_CONFIG = "/dev/null";
+    RCLONE_CONFIG_SEEDBOX_TYPE = "sftp";
+    RCLONE_CONFIG_SEEDBOX_HOST = host;
+    RCLONE_CONFIG_SEEDBOX_USER = user;
+    RCLONE_CONFIG_SEEDBOX_KEY_FILE = config.age.secrets.seedbox-ssh-key.path;
+    RCLONE_CONFIG_SEEDBOX_KNOWN_HOSTS_FILE = "${knownHosts}";
+    RCLONE_CONFIG_SEEDBOX_HOST_KEY_ALGORITHMS = "ssh-ed25519";
+    # Never run md5sum on the slot: the shared HDD is what qBittorrent is
+    # writing to.
+    RCLONE_CONFIG_SEEDBOX_DISABLE_HASHCHECK = "true";
   };
 
   ratioGrab = pkgs.writers.writePython3Bin "seedbox-ratio-grab" {
@@ -83,13 +85,13 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       path = [ pkgs.rclone ];
-      environment = {
-        RCLONE_CONFIG = rcloneConfig;
+      environment = rcloneRemote // {
         RCLONE_CACHE_DIR = "/var/cache/seedbox-pull";
       };
       script = ''
         rclone copy --inplace=false --size-only --min-age 1m --transfers 8 --multi-thread-streams 4 \
-          --exclude '*.!qB' --include '/{sonarr,radarr}/**' "seedbox:${remoteDownloads}" "${localDownloads}"
+          --filter '- *.!qB' --filter '+ /{sonarr,radarr}/**' --filter '- *' \
+          "seedbox:${remoteDownloads}" "${localDownloads}"
       '';
       serviceConfig = {
         Type = "oneshot";
