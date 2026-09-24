@@ -167,6 +167,13 @@ def main():
                 log(f"skip, over size cap: {describe(release, age, factor)}")
                 seen.add(info_hash)
                 continue
+            # Upload comes from swarms that are still one uploader and its
+            # leechers; one that already has more seeders than leechers is
+            # served and yields nothing.
+            if (release.get("seeders") or 0) > max(1, release.get("leechers") or 0):
+                log(f"skip, already seeded: {describe(release, age, factor)}")
+                seen.add(info_hash)
+                continue
             if total + size > MAX_TOTAL:
                 log(f"skip, category at {total / GB:.0f} GB: {release['title']}")
                 continue
