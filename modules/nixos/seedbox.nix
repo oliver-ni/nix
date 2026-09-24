@@ -131,7 +131,8 @@ in
     # 0.9, or 72 h + 2 h/GB for anything up to MAX_SIZE_GB). The site also
     # frowns on leaving low-seeded torrents, so one with fewer than
     # MIN_OTHER_SEEDERS stays until more show up. MAX_TOTAL_GB bounds the slot
-    # disk the category may hold at once.
+    # disk the category may hold at once; the slot is 3.9 TB, shared with the
+    # sonarr/radarr categories.
     services.seedbox-ratio-grab = {
       description = "Grab discounted AvistaZ releases on the seedbox for ratio";
       restartIfChanged = false;
@@ -147,11 +148,11 @@ in
         CATEGORY = "ratio";
         SAVE_PATH = "${remoteDownloads}/ratio";
         SEED_MINUTES = "20160";
-        DONE_RATIO = "1.0";
+        DONE_RATIO = "0.9";
         MIN_OTHER_SEEDERS = "3";
         MAX_AGE_HOURS = "2";
         MAX_SIZE_GB = "100";
-        MAX_TOTAL_GB = "300";
+        MAX_TOTAL_GB = "1500";
         MAX_DOWNLOAD_FACTOR = "0";
         # Slot-wide qBittorrent settings the rest of this module relies on,
         # asserted on every run so a WebUI change cannot silently undo them.
