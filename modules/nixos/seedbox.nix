@@ -119,25 +119,26 @@ in
       };
     };
 
-    # AvistaZ upload comes from seeding fresh releases while they still have
-    # leechers, and freeleech ones cost no ratio to fetch. New releases are
-    # found through Prowlarr's AvistaZ indexer (it holds the tracker login)
-    # and added to the slot under the `ratio` category, which the pull never
-    # brings home. Nearly all upload happens in a release's first hours, so
-    # only releases up to MAX_AGE_HOURS old are taken (the timer sees them
-    # within 10 min; the window only matters after downtime), and none whose
-    # swarm already has more seeders than leechers. A torrent is
-    # deleted from the slot once it has seeded for SEED_MINUTES or reached
-    # DONE_RATIO, either of which clears AvistaZ's hit-and-run rule (ratio
-    # 0.9, or 72 h + 2 h/GB for anything up to MAX_SIZE_GB). The site also
-    # frowns on leaving low-seeded torrents, so one with fewer than
+    # Private-tracker upload comes from seeding fresh releases while they
+    # still have leechers, and freeleech ones cost no ratio to fetch. New
+    # releases are found through Prowlarr's indexer for each tracker (it holds
+    # the logins) and added to the slot under that tracker's category, which
+    # the pull never brings home; a category per tracker keeps each site's
+    # hit-and-run obligations apart. Nearly all upload happens in a release's
+    # first hours, so only releases up to MAX_AGE_HOURS old are taken (the
+    # timer sees them within 10 min; the window only matters after downtime),
+    # and none whose swarm already has more seeders than leechers. A torrent
+    # is deleted from the slot once it has seeded for SEED_MINUTES or reached
+    # DONE_RATIO, either of which clears the AvistaZ network's hit-and-run
+    # rule (ratio 0.9, or 72 h + 2 h/GB for anything up to MAX_SIZE_GB). The
+    # sites also frown on leaving low-seeded torrents, so one with fewer than
     # MIN_OTHER_SEEDERS stays until more show up. A download still under 10%
     # with no transfer for STALL_HOURS (the uploader never showed) is dropped,
-    # which AvistaZ allows without a hit-and-run. MAX_TOTAL_GB bounds the slot
-    # disk the category may hold at once; the slot is 3.9 TB, shared with the
-    # sonarr/radarr categories.
+    # which they allow without a hit-and-run. MAX_TOTAL_GB bounds the slot
+    # disk all ratio categories may hold together; the slot is 3.9 TB, shared
+    # with the sonarr/radarr categories.
     services.seedbox-ratio-grab = {
-      description = "Grab discounted AvistaZ releases on the seedbox for ratio";
+      description = "Grab discounted private-tracker releases on the seedbox for ratio";
       restartIfChanged = false;
       after = [
         "network-online.target"
@@ -146,16 +147,19 @@ in
       wants = [ "network-online.target" ];
       environment = {
         PROWLARR_URL = "http://localhost:9696";
-        PROWLARR_INDEXER_ID = "2";
         QBITTORRENT_URL = qbittorrent;
-        CATEGORY = "ratio";
-        SAVE_PATH = "${remoteDownloads}/ratio";
+        DOWNLOADS = remoteDownloads;
+        # qBittorrent category -> Prowlarr indexer id (Prowlarr's indexer table).
+        TRACKERS = builtins.toJSON {
+          ratio-avistaz = 2;
+          ratio-animez = 3;
+        };
         SEED_MINUTES = "20160";
         DONE_RATIO = "0.9";
         MIN_OTHER_SEEDERS = "3";
         MAX_AGE_HOURS = "2";
         MAX_SIZE_GB = "100";
-        MAX_TOTAL_GB = "1500";
+        MAX_TOTAL_GB = "2000";
         MAX_DOWNLOAD_FACTOR = "0";
         STALL_HOURS = "1";
         # Slot-wide qBittorrent settings the rest of this module relies on,
@@ -188,9 +192,9 @@ in
     timers.seedbox-ratio-grab = {
       wantedBy = [ "timers.target" ];
       timerConfig = {
-        # AvistaZ has no IRC announces, so being an early seeder means
-        # polling. The site has blocked API clients for overload before
-        # (RSS is what it sanctions for automation), so keep this modest.
+        # The trackers have no IRC announces, so being an early seeder means
+        # polling. AvistaZ has blocked API clients for overload before (RSS is
+        # what it sanctions for automation), so keep this modest.
         OnBootSec = "5m";
         OnUnitInactiveSec = "10m";
       };
