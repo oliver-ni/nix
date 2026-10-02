@@ -8,6 +8,10 @@ got going, then ask Prowlarr for each tracker's newest releases and add the
 ones worth seeding. Each tracker and each grab is independent; a failure is
 logged and the run moves on. Info hashes already handled are kept in
 STATE_DIRECTORY so a deleted or skipped torrent is not considered again.
+
+ARRS maps each arr's qBittorrent category to its URL. Their torrents are
+deleted from the slot once qBittorrent has stopped them at the share limit the
+arr set, the arr has imported them, and every file has been pulled home.
 """
 
 import json
@@ -26,7 +30,9 @@ PROWLARR_URL = env["PROWLARR_URL"]
 QBITTORRENT_URL = env["QBITTORRENT_URL"]
 QBITTORRENT_PREFERENCES = json.loads(env["QBITTORRENT_PREFERENCES"])
 TRACKERS = json.loads(env["TRACKERS"])
+ARRS = json.loads(env["ARRS"])
 DOWNLOADS = env["DOWNLOADS"]
+LOCAL_DOWNLOADS = Path(env["LOCAL_DOWNLOADS"])
 SEED_TIME = timedelta(minutes=int(env["SEED_MINUTES"]))
 DONE_RATIO = float(env["DONE_RATIO"])
 MIN_OTHER_SEEDERS = int(env["MIN_OTHER_SEEDERS"])
@@ -103,6 +109,80 @@ def cleanup(torrents, now):
     return remaining
 
 
+def arr_imported(url, api_key):
+    """Info hashes of the torrents the arr has imported and is finished with.
+    A download it is still working on (import pending, files it could not
+    match) stays in its queue; one it never grabbed has no history."""
+    arr = requests.Session()
+    arr.headers["X-Api-Key"] = api_key
+    queue = arr.get(f"{url}/api/v3/queue", params={"pageSize": 1000}, timeout=60)
+    queue.raise_for_status()
+    pending = {q["downloadId"].lower() for q in queue.json()["records"] if q.get("downloadId")}
+    imported = set()
+    page = 1
+    while True:
+        r = arr.get(
+            f"{url}/api/v3/history",
+            params={"eventType": 3, "pageSize": 500, "page": page},
+            timeout=60,
+        )
+        r.raise_for_status()
+        body = r.json()
+        imported |= {h["downloadId"].lower() for h in body["records"] if h.get("downloadId")}
+        if page * body["pageSize"] >= body["totalRecords"]:
+            break
+        page += 1
+    return imported - pending
+
+
+def at_share_limit(t):
+    """qBittorrent stopped the torrent at a ratio or seeding-time limit set on
+    it (the arrs set both from Prowlarr's seed criteria; -1 is unlimited and
+    -2 the client default, neither of which is a goal)."""
+    if t["state"] not in ("stoppedUP", "pausedUP"):
+        return False
+    return (0 <= t["ratio_limit"] <= t["ratio"]) or (
+        0 <= t["seeding_time_limit"] <= t["seeding_time"] / 60
+    )
+
+
+def pulled_home(t):
+    """Every file of the torrent is at home with its final size, which is the
+    comparison the pull itself makes."""
+    for f in qb_get("torrents/files", hash=t["hash"]):
+        local = LOCAL_DOWNLOADS / t["category"] / f["name"]
+        if not local.is_file() or local.stat().st_size != f["size"]:
+            return False
+    return True
+
+
+def cleanup_arrs(torrents):
+    """Delete the arrs' torrents that are done on every side: stopped at their
+    share limit, imported by the arr, and pulled home. Deleting one makes the
+    next pull drop its home copy, so each condition guards the others."""
+    failures = 0
+    for category, url in ARRS.items():
+        try:
+            imported = arr_imported(url, (CREDENTIALS / f"{category}-api-key").read_text().strip())
+        except requests.RequestException as e:
+            failures += 1
+            log(f"{category}: could not read import state ({e})")
+            continue
+        for t in torrents:
+            if t["category"] != category or not at_share_limit(t) or t["hash"].lower() not in imported:
+                continue
+            try:
+                if not pulled_home(t):
+                    log(f"{category}: imported, waiting for the pull: {t['name']}")
+                    continue
+                log(f"{category}: imported and pulled, ratio {t['ratio']:.2f}: {t['name']}")
+                qb_post("torrents/delete", {"hashes": t["hash"], "deleteFiles": "true"})
+            except (requests.RequestException, OSError) as e:
+                failures += 1
+                log(f"{category}: cleanup failed ({e}): {t['name']}")
+    return failures
+
+
 def download_factor(release):
     factors = [DOWNLOAD_FACTOR[f] for f in release.get("indexerFlags", []) if f in DOWNLOAD_FACTOR]
     return min(factors, default=1.0)
@@ -165,7 +245,7 @@ def main():
     # MAX_TOTAL is shared: the categories compete for the same slot disk.
     total = sum(t["size"] for t in ours)
 
-    failures = 0
+    failures = cleanup_arrs(torrents)
     try:
         for category, indexer_id in TRACKERS.items():
             try:
