@@ -147,7 +147,7 @@ in
           public = true;
           enableLegacyCrypto = true;
           preferShortUsername = true;
-          scopeMaps.ochazuke_users = [
+          scopeMaps.ochazuke_admins = [
             "openid"
             "profile"
             "email"
