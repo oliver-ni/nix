@@ -8,6 +8,7 @@
     ../../modules/nixos/media.nix
     ../../modules/nixos/jellyfin-client.nix
     ../../modules/nixos/jfa-go.nix
+    ../../modules/nixos/kanidm.nix
     ../../modules/nixos/lolesports-kiosk.nix
     ../../modules/nixos/manga.nix
     ../../modules/nixos/proxy.nix
