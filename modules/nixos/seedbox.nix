@@ -68,11 +68,12 @@ in
       "/radarr"
     ];
 
-    # `sync` makes home mirror the slot's arr folders: once the arrs import a
-    # torrent and remove it from the slot, its download copy disappears here
-    # too (library imports are hardlinks, so nothing is lost). It only ever
-    # writes at home; the slot is read. `--inplace=false` writes in-flight
-    # files under a temp name so the arrs never see a half-copied release.
+    # `sync` makes home mirror the slot's arr folders: once a torrent is
+    # imported and the ratio grab below removes it from the slot, its download
+    # copy disappears here too (library imports are hardlinks, so nothing is
+    # lost). It only ever writes at home; the slot is read. `--inplace=false`
+    # writes in-flight files under a temp name so the arrs never see a
+    # half-copied release.
     # Only the arr categories come home; the slot's other folders stay.
     # `--size-only`: finished torrent files never change, and modtimes of
     # already-landed copies do not match the slot's, so size is the only
@@ -137,6 +138,16 @@ in
     # which they allow without a hit-and-run. MAX_TOTAL_GB bounds the slot
     # disk all ratio categories may hold together; the slot is 3.9 TB, shared
     # with the sonarr/radarr categories.
+    #
+    # The same run also clears the arrs' torrents off the slot. The arrs must
+    # not do it themselves: with Remove Completed on, Sonarr and Radarr treat
+    # a torrent that qBittorrent has stopped at its seed goal as theirs to
+    # consume, import by moving instead of hardlinking, and delete the rest of
+    # the download folder, which here is the pull's half-copied files (Nyaa's
+    # goal of ratio 0.01 or 1 min is met before the pull even starts). So
+    # Remove Completed is off on both clients, every import is a hardlink,
+    # and a torrent leaves the slot only once it has stopped at its goal, the
+    # arr has imported it, and all of it is at home.
     services.seedbox-ratio-grab = {
       description = "Grab discounted private-tracker releases on the seedbox for ratio";
       restartIfChanged = false;
@@ -149,10 +160,16 @@ in
         PROWLARR_URL = "http://localhost:9696";
         QBITTORRENT_URL = qbittorrent;
         DOWNLOADS = remoteDownloads;
+        LOCAL_DOWNLOADS = localDownloads;
         # qBittorrent category -> Prowlarr indexer id (Prowlarr's indexer table).
         TRACKERS = builtins.toJSON {
           ratio-avistaz = 2;
           ratio-animez = 3;
+        };
+        # qBittorrent category -> the arr that fills it.
+        ARRS = builtins.toJSON {
+          sonarr = "http://localhost:8989";
+          radarr = "http://localhost:7878";
         };
         SEED_MINUTES = "20160";
         DONE_RATIO = "0.9";
@@ -185,6 +202,8 @@ in
         LoadCredential = [
           "qbittorrent-auth:${config.age.secrets.seedbox-qbittorrent-auth.path}"
           "prowlarr-api-key:${config.age.secrets.prowlarr-api-key.path}"
+          "sonarr-api-key:${config.age.secrets.sonarr-api-key.path}"
+          "radarr-api-key:${config.age.secrets.radarr-api-key.path}"
         ];
       };
     };
