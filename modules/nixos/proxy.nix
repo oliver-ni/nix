@@ -16,6 +16,7 @@ let
     sonarr = 8989;
     radarr = 7878;
     prowlarr = 9696;
+    suwayomi = 4567;
     ha = 8123;
   };
   tailnetHosts = lib.concatStringsSep "\n" (
@@ -88,6 +89,11 @@ in
           }
 
           ${tailnetHosts}
+
+          @manga host manga.${domain}
+          handle @manga {
+            reverse_proxy localhost:25600
+          }
 
           # The client covers requesting; Seerr's own UI stays for its admin.
           @requests host requests.${domain}
