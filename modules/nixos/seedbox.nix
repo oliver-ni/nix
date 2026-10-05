@@ -120,34 +120,20 @@ in
       };
     };
 
-    # Private-tracker upload comes from seeding fresh releases while they
-    # still have leechers, and freeleech ones cost no ratio to fetch. New
-    # releases are found through Prowlarr's indexer for each tracker (it holds
-    # the logins) and added to the slot under that tracker's category, which
-    # the pull never brings home; a category per tracker keeps each site's
-    # hit-and-run obligations apart. Nearly all upload happens in a release's
-    # first hours, so only releases up to MAX_AGE_HOURS old are taken (the
-    # timer sees them within 10 min; the window only matters after downtime),
-    # and none whose swarm already has more seeders than leechers. A torrent
-    # is deleted from the slot once it has seeded for SEED_MINUTES or reached
-    # DONE_RATIO, either of which clears the AvistaZ network's hit-and-run
-    # rule (ratio 0.9, or 72 h + 2 h/GB for anything up to MAX_SIZE_GB). The
-    # sites also frown on leaving low-seeded torrents, so one with fewer than
-    # MIN_OTHER_SEEDERS stays until more show up. A download still under 10%
-    # with no transfer for STALL_HOURS (the uploader never showed) is dropped,
-    # which they allow without a hit-and-run. MAX_TOTAL_GB bounds the slot
-    # disk all ratio categories may hold together; the slot is 3.9 TB, shared
-    # with the sonarr/radarr categories.
+    # Builds ratio on the private trackers by seeding their fresh releases
+    # while they still have leechers (how the grab picks and releases
+    # torrents is documented in the script); each tracker gets its own
+    # qBittorrent category, which the pull never brings home, so the sites'
+    # hit-and-run obligations stay apart. The limits below are set against the
+    # AvistaZ network's rule (ratio 0.9, or 72 h + 2 h/GB) and the slot's
+    # 3.9 TB disk, shared with the sonarr/radarr categories.
     #
-    # The same run also clears the arrs' torrents off the slot. The arrs must
-    # not do it themselves: with Remove Completed on, Sonarr and Radarr treat
-    # a torrent that qBittorrent has stopped at its seed goal as theirs to
-    # consume, import by moving instead of hardlinking, and delete the rest of
-    # the download folder, which here is the pull's half-copied files (Nyaa's
-    # goal of ratio 0.01 or 1 min is met before the pull even starts). So
-    # Remove Completed is off on both clients, every import is a hardlink,
-    # and a torrent leaves the slot only once it has stopped at its goal, the
-    # arr has imported it, and all of it is at home.
+    # The same run clears the arrs' torrents off the slot once qBittorrent has
+    # stopped them at their share limit, the arr has imported them and every
+    # file is at home. The arrs must not do it themselves: with Remove
+    # Completed on they import a stopped torrent by moving instead of
+    # hardlinking and then delete the download folder, taking the pull's
+    # half-copied files with it. So Remove Completed stays off on both.
     services.seedbox-ratio-grab = {
       description = "Grab discounted private-tracker releases on the seedbox for ratio";
       restartIfChanged = false;
