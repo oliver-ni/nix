@@ -2,10 +2,12 @@
 
 let
   # oliver-ni/jellyfin-client: a static SPA. The Jellyfin URL is baked in so
-  # sign-in skips the address step; Seerr is reached through the same origin
-  # under /seerr.
+  # sign-in skips the address step and leads with the Kanidm account through
+  # Jellyfin's SSO plugin; Seerr is reached through the same origin under
+  # /seerr.
   client = inputs.jellyfin-client.packages.${pkgs.stdenv.hostPlatform.system}.default.override {
     jellyfinUrl = "https://jellyfin.ochazuke.org";
+    ssoProvider = "ochazuke";
     brandMark = "🍵";
   };
 in
@@ -17,6 +19,13 @@ in
     }
 
     root * ${client}
+
+    # The SSO plugin's pages run on this origin with the Host kept, so they
+    # hand the token to the client rather than to jellyfin-web (see
+    # src/lib/sso.ts in the client); Kanidm knows this redirect URI too.
+    handle /sso/* {
+      reverse_proxy localhost:8096
+    }
 
     handle_path /seerr/* {
       reverse_proxy localhost:5055

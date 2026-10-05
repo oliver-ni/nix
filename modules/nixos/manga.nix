@@ -43,9 +43,32 @@
   services.komga = {
     enable = true;
     group = "media";
-    settings.server = {
-      address = "127.0.0.1";
-      port = 25600;
+    settings = {
+      server = {
+        address = "127.0.0.1";
+        port = 25600;
+      };
+
+      # "Sign in with ochazuke account" (kanidm.nix). Komga matches people to
+      # its own users by email and creates the missing ones on first login.
+      komga.oauth2-account-creation = true;
+      spring.security.oauth2.client = {
+        registration.ochazuke = {
+          provider = "ochazuke";
+          client-id = "komga";
+          client-name = "ochazuke account";
+          client-authentication-method = "none";
+          scope = [
+            "openid"
+            "profile"
+            "email"
+          ];
+        };
+        provider.ochazuke = {
+          issuer-uri = "https://accounts.ochazuke.org/oauth2/openid/komga";
+          user-name-attribute = "preferred_username";
+        };
+      };
     };
   };
 

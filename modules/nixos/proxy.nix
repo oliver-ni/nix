@@ -101,26 +101,14 @@ in
             reverse_proxy localhost:5055
           }
 
+          # Kanidm (kanidm.nix) terminates its own TLS on loopback with a
+          # self-signed certificate; Caddy's X-Forwarded-For is what it logs.
           @accounts host accounts.${domain}
           handle @accounts {
-            @inviteRead {
-              method GET HEAD
-              path /invite/* /css/* /js/* /fonts/* /lang/* /captcha/gen/* /captcha/img/* /favicon* /apple-touch-icon.png /site.webmanifest /safari-pinned-tab.svg /android-chrome-*.png
-            }
-            handle @inviteRead {
-              reverse_proxy localhost:8056
-            }
-
-            @inviteWrite {
-              method POST
-              path /user/invite /captcha/verify/*
-            }
-            handle @inviteWrite {
-              reverse_proxy localhost:8056
-            }
-
-            handle {
-              respond 404
+            reverse_proxy https://127.0.0.1:8443 {
+              transport http {
+                tls_insecure_skip_verify
+              }
             }
           }
 
