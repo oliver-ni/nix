@@ -7,24 +7,20 @@ let
       komgaUser = "komf@ochazuke.org";
       # Without this Komf only acts on manual requests through its own API.
       eventListener.enabled = true;
-      metadataUpdate.default = {
-        libraryType = "MANGA";
-        # Replace Komga's page-one thumbnail with the provider's cover art.
-        seriesCovers = true;
-      };
+      # Replace Komga's page-one thumbnail with the provider's cover art.
+      metadataUpdate.default.seriesCovers = true;
     };
-    database.file = "/var/lib/komf/database.sqlite";
     metadataProviders.defaultProviders = {
-      # First match wins. AniList first for its large covers and because its
-      # link lets the client fetch banner art; MangaUpdates covers the
-      # obscure titles AniList lacks.
-      aniList = {
-        priority = 10;
+      # Providers are off unless enabled; the lowest priority is tried first
+      # and the first match wins. AniList first for its large covers and
+      # because its link lets the client fetch banner art; MangaUpdates
+      # covers the obscure titles AniList lacks.
+      aniList.enabled = true;
+      mangaUpdates = {
         enabled = true;
+        priority = 20;
       };
-      mangaUpdates.priority = 20;
     };
-    server.port = 8085;
   };
 
   komf = pkgs.fetchurl {
@@ -40,8 +36,8 @@ in
   # reader, so it binds to loopback and is reached only through Caddy's
   # tailnet-only hostname. Komga is the sharing side: it serves the CBZs
   # Suwayomi writes with per-user accounts, read progress, a web reader and
-  # OPDS, publicly at komga.<domain>; Komf below decorates it with metadata. Chapters land on the pool; both
-  # databases stay under /var/lib.
+  # OPDS, publicly at komga.<domain>; Komf below fills in its metadata.
+  # Chapters land on the pool; all three databases stay under /var/lib.
   services.suwayomi-server = {
     enable = true;
     group = "media";
