@@ -52,6 +52,9 @@
       # "Sign in with ochazuke account" (kanidm.nix). Komga matches people to
       # its own users by email and creates the missing ones on first login.
       komga.oauth2-account-creation = true;
+      # The Manga tab in jellyfin-client (ochazuke.org) calls this API from the
+      # browser with the session cookie; same site, so the cookie is sent.
+      komga.cors.allowed-origins = [ "https://ochazuke.org" ];
       spring.security.oauth2.client = {
         registration.ochazuke = {
           provider = "ochazuke";
