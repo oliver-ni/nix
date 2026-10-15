@@ -11,7 +11,6 @@ in
   "radarr-api-key.age".publicKeys = keys;
   "prowlarr-api-key.age".publicKeys = keys;
   "cloudflare-api-token.age".publicKeys = keys;
-  "jfa-go-config.age".publicKeys = keys;
   "kanidm-admin-password.age".publicKeys = keys;
   "kanidm-idm-admin-password.age".publicKeys = keys;
   "kanidm-oauth2-jellyfin.age".publicKeys = keys;
