@@ -55,6 +55,17 @@ in
       respond 404
     }
 
+    # Manga requests (manga.nix), for the same Seerr sessions as the Sonarr
+    # reads above.
+    handle_path /suwayomi/* {
+      forward_auth localhost:5055 {
+        uri /api/v1/auth/me?
+      }
+      reverse_proxy 127.0.0.1:4568 {
+        header_up -Cookie
+      }
+    }
+
     @assets path /assets/*
     header @assets Cache-Control "public, max-age=31536000, immutable"
 
