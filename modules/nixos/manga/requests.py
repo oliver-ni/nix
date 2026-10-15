@@ -5,7 +5,8 @@ Caddy's check for a Seerr session. Suwayomi's own API can also delete manga,
 install extensions and change settings, so it stays on loopback and only these
 routes are passed through:
 
-  GET  /search?q=       titles matching q in each of SOURCES
+  GET  /search?q=       titles matching q in each of SOURCES, closest match first;
+                        a title on several is listed once, from the earliest in SOURCES
   GET  /requests        the library, newest first, with chapter counts
   POST /request/<id>    add a title to the library and download every chapter
   GET  /thumbnail/<id>  cover art
@@ -70,7 +71,23 @@ def search_source(source, q):
 
 def search(q):
     with ThreadPoolExecutor(len(SOURCES)) as pool:
-        return [t for ts in pool.map(lambda s: search_source(s, q), SOURCES) for t in ts]
+        results = [t for ts in pool.map(lambda s: search_source(s, q), SOURCES) for t in ts]
+    seen = set()
+    for t in sorted(results, key=lambda t: rank(t["title"], q)):
+        key = normalize(t["title"])
+        if key not in seen:
+            seen.add(key)
+            yield t
+
+
+def normalize(title):
+    return re.sub(r"\W", "", title.casefold())
+
+
+def rank(title, q):
+    """Exact matches, then titles starting with the query, then the rest; fan works last."""
+    t, q = normalize(title), normalize(q)
+    return ("doujinshi" in t, 0 if t == q else 1 if t.startswith(q) else 2)
 
 
 def library():
@@ -103,7 +120,6 @@ def request(manga_id):
         ids=[c["id"] for c in data["fetchMangaAndChapters"]["chapters"]],
     )
 
-
 def komga(path, method="GET"):
     req = Request(f"{KOMGA_URL}/api/v1{path}", method=method, headers={"Authorization": KOMGA_AUTH})
     with urlopen(req, timeout=60) as res:
@@ -130,7 +146,7 @@ class Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         if url.path == "/search":
             q = parse_qs(url.query).get("q", [""])[0].strip()
-            self.respond(lambda: self.json(search(q) if q else []))
+            self.respond(lambda: self.json(list(search(q)) if q else []))
         elif url.path == "/requests":
             self.respond(lambda: self.json(library()))
         elif m := re.fullmatch(r"/thumbnail/(\d+)", url.path):

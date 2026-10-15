@@ -161,11 +161,12 @@ in
       PORT = "4568";
       KOMGA_URL = "http://127.0.0.1:25600";
       KOMGA_USER = "requests@ochazuke.org";
-      # Suwayomi source ids: MangaDex (EN) for fan translations, Weeb Central
-      # for the official releases of licensed series MangaDex has taken down.
+      # Suwayomi source ids, preferred first: Weeb Central for the official,
+      # complete releases of licensed series; MangaDex (EN) for the fan
+      # translations of everything else.
       SOURCES = builtins.toJSON [
-        "2499283573021220255"
         "2131019126180322627"
+        "2499283573021220255"
       ];
     };
     serviceConfig = {
