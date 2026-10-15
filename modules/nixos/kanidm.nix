@@ -140,8 +140,8 @@ in
 
         komga = {
           displayName = "Manga";
-          originUrl = "https://manga.${domain}/login/oauth2/code/ochazuke";
-          originLanding = "https://manga.${domain}";
+          originUrl = "https://komga.${domain}/login/oauth2/code/ochazuke";
+          originLanding = "https://komga.${domain}";
 
           # Spring only does PKCE for public clients, and only validates RS256
           # ID tokens.
