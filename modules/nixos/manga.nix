@@ -23,6 +23,10 @@ let
     };
   };
 
+  mangaRequests = pkgs.writers.writePython3Bin "manga-requests" {
+    flakeIgnore = [ "E501" ];
+  } (builtins.readFile ./manga/requests.py);
+
   komf = pkgs.fetchurl {
     url = "https://github.com/Snd-R/komf/releases/download/2.1.0/komf-2.1.0.jar";
     hash = "sha256-J2AitFV42TPoBHvmO/3UEjyAl53tiy8JhlB/2vCEAJM=";
@@ -62,6 +66,12 @@ in
       downloadsPath = "/zfs78/media/manga";
       downloadAsCbz = true;
       autoDownloadNewChapters = true;
+      # Nobody reads in Suwayomi (Komga is the reader), so every title counts
+      # as unstarted with unread chapters, which these default to skipping in
+      # library updates and auto-downloads.
+      excludeUnreadChapters = false;
+      excludeNotStarted = false;
+      excludeEntryWithUnreadChapters = false;
       extensionStores = [ "https://raw.githubusercontent.com/keiyoushi/extensions/repo/repo.json" ];
     };
   };
@@ -127,6 +137,41 @@ in
       StateDirectory = "komf";
       WorkingDirectory = "/var/lib/komf";
       LoadCredential = "komga-password:${config.age.secrets.komga-komf-password.path}";
+      Restart = "on-failure";
+    };
+  };
+
+  # The client's Requests tab adds manga through this rather than Suwayomi's
+  # API, which can also delete manga and change settings: search, add and list
+  # only (see manga/requests.py). Caddy serves it at ochazuke.org/suwayomi to
+  # browsers with a Seerr session (jellyfin-client.nix). It also has Komga scan
+  # as soon as chapters land, as the Komga user `requests@ochazuke.org` (admin
+  # role, which scans need; created by hand in Komga).
+  age.secrets.komga-requests-password.file = ../../secrets/komga-requests-password.age;
+
+  systemd.services.manga-requests = {
+    description = "Manga requests for jellyfin-client";
+    after = [
+      "suwayomi-server.service"
+      "komga.service"
+    ];
+    wantedBy = [ "multi-user.target" ];
+    environment = {
+      SUWAYOMI_URL = "http://127.0.0.1:4567";
+      PORT = "4568";
+      KOMGA_URL = "http://127.0.0.1:25600";
+      KOMGA_USER = "requests@ochazuke.org";
+      # Suwayomi source ids: MangaDex (EN) for fan translations, Weeb Central
+      # for the official releases of licensed series MangaDex has taken down.
+      SOURCES = builtins.toJSON [
+        "2499283573021220255"
+        "2131019126180322627"
+      ];
+    };
+    serviceConfig = {
+      ExecStart = "${mangaRequests}/bin/manga-requests";
+      DynamicUser = true;
+      LoadCredential = "komga-password:${config.age.secrets.komga-requests-password.path}";
       Restart = "on-failure";
     };
   };
