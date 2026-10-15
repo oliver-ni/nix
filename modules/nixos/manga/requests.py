@@ -84,8 +84,9 @@ def normalize(title):
 
 def rank(title, q):
     """Exact matches, then titles starting with the query, then the rest; fan works last."""
+    fan = re.search(r"doujinshi|anthology|\bdj\b", title, re.I) is not None
     t, q = normalize(title), normalize(q)
-    return ("doujinshi" in t, 0 if t == q else 1 if t.startswith(q) else 2)
+    return (fan, 0 if t == q else 1 if t.startswith(q) else 2)
 
 
 def library():
