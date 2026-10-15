@@ -17,4 +17,5 @@ in
   "kanidm-oauth2-jellyfin.age".publicKeys = keys;
   "seedbox-ssh-key.age".publicKeys = keys;
   "seedbox-qbittorrent-auth.age".publicKeys = keys;
+  "komga-komf-password.age".publicKeys = keys;
 }
