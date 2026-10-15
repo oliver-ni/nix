@@ -24,16 +24,16 @@ import time
 from base64 import b64encode
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlsplit
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 
 SUWAYOMI_URL = os.environ["SUWAYOMI_URL"]
 SOURCES = json.loads(os.environ["SOURCES"])
 PORT = int(os.environ["PORT"])
 KOMGA_URL = os.environ["KOMGA_URL"]
-KOMGA_USER = os.environ["KOMGA_USER"]
 KOMGA_PASSWORD = (Path(os.environ["CREDENTIALS_DIRECTORY"]) / "komga-password").read_text().strip()
+KOMGA_AUTH = "Basic " + b64encode(f"{os.environ['KOMGA_USER']}:{KOMGA_PASSWORD}".encode()).decode()
 PER_SOURCE = 5
 
 MANGA = "id title inLibrary source { name }"
@@ -76,14 +76,13 @@ def search(q):
 def library():
     data = graphql(
         "{ mangas(condition: {inLibrary: true}, order: [{by: IN_LIBRARY_AT, byType: DESC}]) {"
-        f" nodes {{ {MANGA} inLibraryAt downloadCount chapters {{ totalCount }} }} }}"
+        f" nodes {{ {MANGA} downloadCount chapters {{ totalCount }} }} }}"
         " downloadStatus { queue { chapter { mangaId } } } }"
     )
     queued = [d["chapter"]["mangaId"] for d in data["downloadStatus"]["queue"]]
     return [
         {
             **title(m),
-            "requestedAt": int(m["inLibraryAt"]),
             "chapters": m["chapters"]["totalCount"],
             "downloaded": m["downloadCount"],
             "queued": queued.count(m["id"]),
@@ -106,8 +105,7 @@ def request(manga_id):
 
 
 def komga(path, method="GET"):
-    auth = b64encode(f"{KOMGA_USER}:{KOMGA_PASSWORD}".encode()).decode()
-    req = Request(f"{KOMGA_URL}/api/v1{path}", method=method, headers={"Authorization": f"Basic {auth}"})
+    req = Request(f"{KOMGA_URL}/api/v1{path}", method=method, headers={"Authorization": KOMGA_AUTH})
     with urlopen(req, timeout=60) as res:
         return json.load(res) if res.status == 200 else None
 
