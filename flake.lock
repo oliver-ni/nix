@@ -76,11 +76,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791176592,
-        "narHash": "sha256-CsXHbRCtqeqgJU2lUzmqpcmfU8//0IslroF7WL5oD30=",
+        "lastModified": 1792050382,
+        "narHash": "sha256-dLlyX59VF6rfeMRxI77DD/UjHinvL4t/aKRHCIEdBe0=",
         "owner": "oliver-ni",
         "repo": "jellyfin-client",
-        "rev": "19bb64c6192130f5ecb24a7bd34901d8509b6305",
+        "rev": "71e7d814d751066f2740115d129746e694e45a9d",
         "type": "github"
       },
       "original": {

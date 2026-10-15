@@ -9,6 +9,7 @@ let
     jellyfinUrl = "https://jellyfin.ochazuke.org";
     ssoProvider = "ochazuke";
     brandMark = "🍵";
+    komgaUrl = "https://komga.ochazuke.org";
   };
 in
 {
