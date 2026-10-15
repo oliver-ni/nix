@@ -5,7 +5,8 @@ Caddy's check for a Seerr session. Suwayomi's own API can also delete manga,
 install extensions and change settings, so it stays on loopback and only these
 routes are passed through:
 
-  GET  /search?q=       titles matching q in each of SOURCES
+  GET  /search?q=       titles matching q in each of SOURCES, closest match first;
+                        a title on several is listed once, from the earliest in SOURCES
   GET  /requests        the library, newest first, with chapter counts
   POST /request/<id>    add a title to the library and download every chapter
   GET  /thumbnail/<id>  cover art
@@ -34,7 +35,7 @@ PORT = int(os.environ["PORT"])
 KOMGA_URL = os.environ["KOMGA_URL"]
 KOMGA_PASSWORD = (Path(os.environ["CREDENTIALS_DIRECTORY"]) / "komga-password").read_text().strip()
 KOMGA_AUTH = "Basic " + b64encode(f"{os.environ['KOMGA_USER']}:{KOMGA_PASSWORD}".encode()).decode()
-PER_SOURCE = 5
+RESULTS = 8
 
 MANGA = "id title inLibrary source { name }"
 
@@ -65,12 +66,27 @@ def search_source(source, q):
         # One source being down shouldn't hide the other's results.
         print(f"search {source}: {e}", file=sys.stderr)
         return []
-    return [title(m) for m in data["fetchSourceManga"]["mangas"][:PER_SOURCE]]
+    return [title(m) for m in data["fetchSourceManga"]["mangas"]]
 
 
 def search(q):
     with ThreadPoolExecutor(len(SOURCES)) as pool:
-        return [t for ts in pool.map(lambda s: search_source(s, q), SOURCES) for t in ts]
+        results = [t for ts in pool.map(lambda s: search_source(s, q), SOURCES) for t in ts]
+    seen = {}
+    for t in sorted(results, key=lambda t: rank(t["title"], q)):
+        seen.setdefault(normalize(t["title"]), t)
+    return list(seen.values())[:RESULTS]
+
+
+def normalize(title):
+    return re.sub(r"\W", "", title.casefold())
+
+
+def rank(title, q):
+    """Exact matches, then titles starting with the query, then the rest; fan works last."""
+    fan = re.search(r"doujinshi|anthology|\bdj\b", title, re.I) is not None
+    t, q = normalize(title), normalize(q)
+    return (fan, 0 if t == q else 1 if t.startswith(q) else 2)
 
 
 def library():
@@ -102,7 +118,6 @@ def request(manga_id):
         "mutation($ids: [Int!]!) { enqueueChapterDownloads(input: {ids: $ids}) { clientMutationId } }",
         ids=[c["id"] for c in data["fetchMangaAndChapters"]["chapters"]],
     )
-
 
 def komga(path, method="GET"):
     req = Request(f"{KOMGA_URL}/api/v1{path}", method=method, headers={"Authorization": KOMGA_AUTH})
