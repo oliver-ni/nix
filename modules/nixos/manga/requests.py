@@ -9,7 +9,9 @@ routes are passed through:
                         a title on several is listed once, from the earliest in SOURCES
   GET  /manga/<id>      one title's details and chapter count
   GET  /requests        the library, newest first, with chapter counts
-  POST /request/<id>    add a title to the library and download every chapter
+  POST /request/<id>    add a title to the library and download one version of every
+                        chapter, from the group in the JSON body ({"group": name};
+                        the most complete one when absent)
   GET  /thumbnail/<id>  cover art
 
 Komga only looks for new files on its own schedule, so whenever Suwayomi has
@@ -143,17 +145,23 @@ def library():
     ]
 
 
-def request(manga_id):
+def request(manga_id, group=None):
+    """Add the title and download one version of each chapter: the chosen group's (the most
+    complete one by default), with the other groups filling chapters it lacks."""
     # Chapters first: a source that fails here leaves nothing half-added.
-    data = graphql(
-        "mutation($id: Int!) { fetchMangaAndChapters(input: {id: $id, fetchManga: true, fetchChapters: true}) { chapters { id } } }",
-        id=manga_id,
-    )
+    chapters = fetch_chapters(manga_id)
+    if not chapters:
+        raise ValueError("no chapters")
+    group = group or Counter(c["scanlator"] for c in chapters).most_common(1)[0][0]
+    chosen = {}
+    for c in sorted(chapters, key=lambda c: c["scanlator"] != group):
+        chosen.setdefault(c["chapterNumber"], c["id"])
     graphql("mutation($id: Int!) { updateManga(input: {id: $id, patch: {inLibrary: true}}) { manga { id } } }", id=manga_id)
     graphql(
         "mutation($ids: [Int!]!) { enqueueChapterDownloads(input: {ids: $ids}) { clientMutationId } }",
-        ids=[c["id"] for c in data["fetchMangaAndChapters"]["chapters"]],
+        ids=list(chosen.values()),
     )
+
 
 def komga(path, method="GET"):
     req = Request(f"{KOMGA_URL}/api/v1{path}", method=method, headers={"Authorization": KOMGA_AUTH})
@@ -193,7 +201,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if m := re.fullmatch(r"/request/(\d+)", self.path):
-            self.respond(lambda: (request(int(m[1])), self.send_response(204), self.end_headers()))
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            self.respond(lambda: (request(int(m[1]), body.get("group")), self.send_response(204), self.end_headers()))
         else:
             self.send_error(404)
 
