@@ -1,4 +1,37 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
+
+let
+  komfConfig = (pkgs.formats.yaml { }).generate "application.yml" {
+    komga = {
+      baseUri = "http://127.0.0.1:25600";
+      komgaUser = "komf@ochazuke.org";
+      # Without this Komf only acts on manual requests through its own API.
+      eventListener.enabled = true;
+      metadataUpdate.default = {
+        libraryType = "MANGA";
+        # Replace Komga's page-one thumbnail with the provider's cover art.
+        seriesCovers = true;
+      };
+    };
+    database.file = "/var/lib/komf/database.sqlite";
+    metadataProviders.defaultProviders = {
+      # First match wins. AniList first for its large covers and because its
+      # link lets the client fetch banner art; MangaUpdates covers the
+      # obscure titles AniList lacks.
+      aniList = {
+        priority = 10;
+        enabled = true;
+      };
+      mangaUpdates.priority = 20;
+    };
+    server.port = 8085;
+  };
+
+  komf = pkgs.fetchurl {
+    url = "https://github.com/Snd-R/komf/releases/download/2.1.0/komf-2.1.0.jar";
+    hash = "sha256-J2AitFV42TPoBHvmO/3UEjyAl53tiy8JhlB/2vCEAJM=";
+  };
+in
 
 {
   # Two halves, like Sonarr + Jellyfin. Suwayomi is the fetching side: it runs
@@ -7,7 +40,7 @@
   # reader, so it binds to loopback and is reached only through Caddy's
   # tailnet-only hostname. Komga is the sharing side: it serves the CBZs
   # Suwayomi writes with per-user accounts, read progress, a web reader and
-  # OPDS, publicly at manga.<domain>. Chapters land on the pool; both
+  # OPDS, publicly at komga.<domain>; Komf below decorates it with metadata. Chapters land on the pool; both
   # databases stay under /var/lib.
   services.suwayomi-server = {
     enable = true;
@@ -52,6 +85,9 @@
       # "Sign in with ochazuke account" (kanidm.nix). Komga matches people to
       # its own users by email and creates the missing ones on first login.
       komga.oauth2-account-creation = true;
+      # The Manga tab in jellyfin-client (ochazuke.org) calls this API from the
+      # browser with the session cookie; same site, so the cookie is sent.
+      komga.cors.allowed-origins = [ "https://ochazuke.org" ];
       spring.security.oauth2.client = {
         registration.ochazuke = {
           provider = "ochazuke";
@@ -69,6 +105,33 @@
           user-name-attribute = "preferred_username";
         };
       };
+    };
+  };
+
+  # Komf fills in what Suwayomi's CBZs lack (cover, summary, genres, status,
+  # provider links) by matching each new series on AniList/MangaUpdates and
+  # writing the result into Komga over its API, as a Komga user of its own.
+  # Not in nixpkgs; the release jar runs on the headless JRE. Komf wants a
+  # directory it can write provider caches into, so the generated config is
+  # copied into its state directory rather than read from the store.
+  age.secrets.komga-komf-password.file = ../../secrets/komga-komf-password.age;
+
+  systemd.services.komf = {
+    description = "Komf metadata fetcher for Komga";
+    after = [ "komga.service" ];
+    wantedBy = [ "multi-user.target" ];
+    preStart = "install -m 0600 ${komfConfig} /var/lib/komf/application.yml";
+    script = ''
+      KOMF_KOMGA_PASSWORD=$(cat "$CREDENTIALS_DIRECTORY/komga-password")
+      export KOMF_KOMGA_PASSWORD
+      exec ${pkgs.jre_headless}/bin/java -jar ${komf} /var/lib/komf
+    '';
+    serviceConfig = {
+      DynamicUser = true;
+      StateDirectory = "komf";
+      WorkingDirectory = "/var/lib/komf";
+      LoadCredential = "komga-password:${config.age.secrets.komga-komf-password.path}";
+      Restart = "on-failure";
     };
   };
 

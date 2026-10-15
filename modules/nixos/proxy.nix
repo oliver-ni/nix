@@ -90,8 +90,8 @@ in
 
           ${tailnetHosts}
 
-          @manga host manga.${domain}
-          handle @manga {
+          @komga host komga.${domain}
+          handle @komga {
             reverse_proxy localhost:25600
           }
 
