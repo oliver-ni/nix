@@ -9,20 +9,31 @@ routes are passed through:
   GET  /requests        the library, newest first, with chapter counts
   POST /request/<id>    add a title to the library and download every chapter
   GET  /thumbnail/<id>  cover art
+
+Komga only looks for new files on its own schedule, so whenever Suwayomi has
+downloaded more chapters (requests and library updates alike) this asks Komga
+to scan its libraries, signed in as KOMGA_USER.
 """
 
 import json
 import os
 import re
 import sys
+import threading
+import time
+from base64 import b64encode
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
+from pathlib import Path
 from urllib.request import Request, urlopen
 
 SUWAYOMI_URL = os.environ["SUWAYOMI_URL"]
 SOURCES = json.loads(os.environ["SOURCES"])
 PORT = int(os.environ["PORT"])
+KOMGA_URL = os.environ["KOMGA_URL"]
+KOMGA_USER = os.environ["KOMGA_USER"]
+KOMGA_PASSWORD = (Path(os.environ["CREDENTIALS_DIRECTORY"]) / "komga-password").read_text().strip()
 PER_SOURCE = 5
 
 MANGA = "id title inLibrary source { name }"
@@ -94,6 +105,28 @@ def request(manga_id):
     )
 
 
+def komga(path, method="GET"):
+    auth = b64encode(f"{KOMGA_USER}:{KOMGA_PASSWORD}".encode()).decode()
+    req = Request(f"{KOMGA_URL}/api/v1{path}", method=method, headers={"Authorization": f"Basic {auth}"})
+    with urlopen(req, timeout=60) as res:
+        return json.load(res) if res.status == 200 else None
+
+
+def scan_on_download():
+    downloaded = None
+    while True:
+        try:
+            nodes = graphql("{ mangas(condition: {inLibrary: true}) { nodes { downloadCount } } }")["mangas"]["nodes"]
+            count = sum(m["downloadCount"] for m in nodes)
+            if downloaded is not None and count > downloaded:
+                for library in komga("/libraries"):
+                    komga(f"/libraries/{library['id']}/scan", "POST")
+            downloaded = count
+        except Exception as e:
+            print(f"scan: {e}", file=sys.stderr)
+        time.sleep(60)
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urlsplit(self.path)
@@ -139,4 +172,5 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
 
+threading.Thread(target=scan_on_download, daemon=True).start()
 ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

@@ -144,14 +144,23 @@ in
   # The client's Requests tab adds manga through this rather than Suwayomi's
   # API, which can also delete manga and change settings: search, add and list
   # only (see manga/requests.py). Caddy serves it at ochazuke.org/suwayomi to
-  # browsers with a Seerr session (jellyfin-client.nix).
+  # browsers with a Seerr session (jellyfin-client.nix). It also has Komga scan
+  # as soon as chapters land, as the Komga user `requests@ochazuke.org` (admin
+  # role, which scans need; created by hand in Komga).
+  age.secrets.komga-requests-password.file = ../../secrets/komga-requests-password.age;
+
   systemd.services.manga-requests = {
     description = "Manga requests for jellyfin-client";
-    after = [ "suwayomi-server.service" ];
+    after = [
+      "suwayomi-server.service"
+      "komga.service"
+    ];
     wantedBy = [ "multi-user.target" ];
     environment = {
       SUWAYOMI_URL = "http://127.0.0.1:4567";
       PORT = "4568";
+      KOMGA_URL = "http://127.0.0.1:25600";
+      KOMGA_USER = "requests@ochazuke.org";
       # Suwayomi source ids: MangaDex (EN) for fan translations, Weeb Central
       # for the official releases of licensed series MangaDex has taken down.
       SOURCES = builtins.toJSON [
@@ -162,6 +171,7 @@ in
     serviceConfig = {
       ExecStart = "${mangaRequests}/bin/manga-requests";
       DynamicUser = true;
+      LoadCredential = "komga-password:${config.age.secrets.komga-requests-password.path}";
       Restart = "on-failure";
     };
   };
