@@ -92,14 +92,26 @@ def rank(title, q):
     return (fan, 0 if t == q else 1 if t.startswith(q) else 2)
 
 
+def fetch_chapters(manga_id):
+    """The source's chapter list; empty when it has none (MangaDex lists licensed titles bare)."""
+    try:
+        return graphql(
+            f"mutation($id: Int!) {{ fetchChapters(input: {{mangaId: $id}}) {{ chapters {{ {CHAPTER} }} }} }}",
+            id=manga_id,
+        )["fetchChapters"]["chapters"]
+    except RuntimeError as e:
+        if "No chapters found" not in str(e):
+            raise
+        return []
+
+
 def details(manga_id):
-    data = graphql(
-        "mutation($id: Int!) { fetchMangaAndChapters(input: {id: $id, fetchManga: true, fetchChapters: true}) {"
-        f" manga {{ {MANGA} author artist description genre status }} chapters {{ {CHAPTER} }} }} }}",
+    m = graphql(
+        f"mutation($id: Int!) {{ fetchManga(input: {{id: $id}}) {{ manga {{ {MANGA} author artist description genre status }} }} }}",
         id=manga_id,
-    )["fetchMangaAndChapters"]
-    m = data["manga"]
-    groups = Counter(c["scanlator"] or m["source"]["name"] for c in data["chapters"])
+    )["fetchManga"]["manga"]
+    chapters = fetch_chapters(manga_id)
+    groups = Counter(c["scanlator"] or m["source"]["name"] for c in chapters)
     people = f"{m['author'] or ''},{m['artist'] or ''}".split(",")
     return {
         **title(m),
@@ -108,7 +120,7 @@ def details(manga_id):
         "description": re.split(r"\n\s*(?:Associated Name|Alternative Name|Tracker)", m["description"] or "")[0].strip(),
         "genres": m["genre"],
         "status": m["status"],
-        "chapters": len({c["chapterNumber"] for c in data["chapters"]}),
+        "chapters": len({c["chapterNumber"] for c in chapters}),
         "groups": [{"name": g, "chapters": n} for g, n in groups.most_common()],
     }
 
