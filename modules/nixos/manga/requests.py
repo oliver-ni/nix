@@ -7,6 +7,7 @@ routes are passed through:
 
   GET  /search?q=       titles matching q in each of SOURCES, closest match first;
                         a title on several is listed once, from the earliest in SOURCES
+  GET  /manga/<id>      one title's details and chapter count
   GET  /requests        the library, newest first, with chapter counts
   POST /request/<id>    add a title to the library and download every chapter
   GET  /thumbnail/<id>  cover art
@@ -23,6 +24,7 @@ import sys
 import threading
 import time
 from base64 import b64encode
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -38,6 +40,7 @@ KOMGA_AUTH = "Basic " + b64encode(f"{os.environ['KOMGA_USER']}:{KOMGA_PASSWORD}"
 RESULTS = 8
 
 MANGA = "id title inLibrary source { name }"
+CHAPTER = "id chapterNumber scanlator"
 
 
 def graphql(query, **variables):
@@ -87,6 +90,27 @@ def rank(title, q):
     fan = re.search(r"doujinshi|anthology|\bdj\b", title, re.I) is not None
     t, q = normalize(title), normalize(q)
     return (fan, 0 if t == q else 1 if t.startswith(q) else 2)
+
+
+def details(manga_id):
+    data = graphql(
+        "mutation($id: Int!) { fetchMangaAndChapters(input: {id: $id, fetchManga: true, fetchChapters: true}) {"
+        f" manga {{ {MANGA} author artist description genre status }} chapters {{ {CHAPTER} }} }} }}",
+        id=manga_id,
+    )["fetchMangaAndChapters"]
+    m = data["manga"]
+    groups = Counter(c["scanlator"] or m["source"]["name"] for c in data["chapters"])
+    people = f"{m['author'] or ''},{m['artist'] or ''}".split(",")
+    return {
+        **title(m),
+        "authors": list(dict.fromkeys(p.strip() for p in people if p.strip())),
+        # Sources append alternative names and tracker links after the summary.
+        "description": re.split(r"\n\s*(?:Associated Name|Alternative Name|Tracker)", m["description"] or "")[0].strip(),
+        "genres": m["genre"],
+        "status": m["status"],
+        "chapters": len({c["chapterNumber"] for c in data["chapters"]}),
+        "groups": [{"name": g, "chapters": n} for g, n in groups.most_common()],
+    }
 
 
 def library():
@@ -146,6 +170,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/search":
             q = parse_qs(url.query).get("q", [""])[0].strip()
             self.respond(lambda: self.json(search(q) if q else []))
+        elif m := re.fullmatch(r"/manga/(\d+)", url.path):
+            self.respond(lambda: self.json(details(int(m[1]))))
         elif url.path == "/requests":
             self.respond(lambda: self.json(library()))
         elif m := re.fullmatch(r"/thumbnail/(\d+)", url.path):
