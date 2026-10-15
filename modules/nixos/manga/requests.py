@@ -35,7 +35,7 @@ PORT = int(os.environ["PORT"])
 KOMGA_URL = os.environ["KOMGA_URL"]
 KOMGA_PASSWORD = (Path(os.environ["CREDENTIALS_DIRECTORY"]) / "komga-password").read_text().strip()
 KOMGA_AUTH = "Basic " + b64encode(f"{os.environ['KOMGA_USER']}:{KOMGA_PASSWORD}".encode()).decode()
-PER_SOURCE = 5
+RESULTS = 8
 
 MANGA = "id title inLibrary source { name }"
 
@@ -66,18 +66,16 @@ def search_source(source, q):
         # One source being down shouldn't hide the other's results.
         print(f"search {source}: {e}", file=sys.stderr)
         return []
-    return [title(m) for m in data["fetchSourceManga"]["mangas"][:PER_SOURCE]]
+    return [title(m) for m in data["fetchSourceManga"]["mangas"]]
 
 
 def search(q):
     with ThreadPoolExecutor(len(SOURCES)) as pool:
         results = [t for ts in pool.map(lambda s: search_source(s, q), SOURCES) for t in ts]
-    seen = set()
+    seen = {}
     for t in sorted(results, key=lambda t: rank(t["title"], q)):
-        key = normalize(t["title"])
-        if key not in seen:
-            seen.add(key)
-            yield t
+        seen.setdefault(normalize(t["title"]), t)
+    return list(seen.values())[:RESULTS]
 
 
 def normalize(title):
@@ -146,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         if url.path == "/search":
             q = parse_qs(url.query).get("q", [""])[0].strip()
-            self.respond(lambda: self.json(list(search(q)) if q else []))
+            self.respond(lambda: self.json(search(q) if q else []))
         elif url.path == "/requests":
             self.respond(lambda: self.json(library()))
         elif m := re.fullmatch(r"/thumbnail/(\d+)", url.path):
