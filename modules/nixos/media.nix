@@ -125,7 +125,10 @@ in
 
         # TRaSH's "Remux 2160p (Combined)" profile for movies with official UHD
         # releases: 2160p first, 1080p fallback. The anime filters keep fan
-        # upscales and raw/LQ groups from counting as upgrades.
+        # upscales and raw/LQ groups from counting as upgrades. Anime films go
+        # to "[Anime] Remux-1080p" through a Seerr override rule on TMDB's
+        # anime keyword, since the UHD profile scores x265 and FLAC (most
+        # anime BD encodes) below its minimum.
         radarr.movies = {
           base_url = "http://localhost:7878";
           api_key._secret = config.age.secrets.radarr-api-key.path;
@@ -134,6 +137,10 @@ in
           quality_profiles = [
             {
               trash_id = "d1d310673359205736b4b84acd5ea8c8";
+              reset_unmatched_scores.enabled = true;
+            }
+            {
+              trash_id = "722b624f9af1e492284c4bc842153a38";
               reset_unmatched_scores.enabled = true;
             }
           ];
