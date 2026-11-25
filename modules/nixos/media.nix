@@ -1,4 +1,9 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   mediaDir = "/zfs78/media";
@@ -96,7 +101,28 @@ in
       };
     };
 
-    seerr.enable = true;
+    seerr = {
+      enable = true;
+
+      # Seerr before 3.5 skips override rules for anyone with Manage
+      # Requests, so the anime movie rule never applied to admin requests.
+      # Pin 3.5.2 until nixpkgs catches up.
+      package = pkgs.seerr.overrideAttrs (
+        finalAttrs: old: {
+          version = "3.5.2";
+          src = pkgs.fetchFromGitHub {
+            owner = "seerr-team";
+            repo = "seerr";
+            tag = "v${finalAttrs.version}";
+            hash = "sha256-kwbGwWiB0F4GbI+/Q4NKW9hrbIn8yaS5FmA8eImIFVA=";
+          };
+          pnpmDeps = old.pnpmDeps.overrideAttrs {
+            inherit (finalAttrs) src;
+            outputHash = "sha256-NiptqZ+r8JsH47sapaKPo3D3DojCn6j0g/OXkhmjNuU=";
+          };
+        }
+      );
+    };
 
     recyclarr = {
       enable = true;
